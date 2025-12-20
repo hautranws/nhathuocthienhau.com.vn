@@ -10,15 +10,14 @@ import { TPCN_DATA, DMP_DATA, CSCN_DATA, TBYT_DATA } from "./data";
 import { GridItem, SmallItem, ProductCard } from "./sub-components";
 
 // --- CẤU HÌNH MENU CHÍNH ---
-// Giúp code gọn hơn, dễ quản lý thứ tự hiển thị
 const NAV_ITEMS = [
   {
     id: "TPCN",
     label: "Thực phẩm chức năng",
     href: "/category/Thực phẩm chức năng",
-    data: TPCN_DATA, // Dữ liệu từ file data.ts
+    data: TPCN_DATA,
     defaultTab: "Vitamin",
-    type: "dynamic", // Loại: Tự động lấy từ data
+    type: "dynamic",
   },
   {
     id: "DMP",
@@ -32,9 +31,9 @@ const NAV_ITEMS = [
     id: "THUOC",
     label: "Thuốc",
     href: "/category/Thuốc",
-    data: null, // Không dùng data chung
+    data: null,
     defaultTab: "TraCuuThuoc",
-    type: "custom_thuoc", // Loại: Custom giao diện riêng
+    type: "custom_thuoc",
   },
   {
     id: "CSCN",
@@ -62,7 +61,7 @@ const NAV_ITEMS = [
   },
 ];
 
-// --- DỮ LIỆU TĨNH CHO MỤC "THUỐC" & "BỆNH" (Giữ nguyên nội dung cũ) ---
+// --- DỮ LIỆU TĨNH ---
 const THUOC_SIDEBAR = [
   { id: "TraCuuThuoc", l: "Tra cứu thuốc", i: "💊" },
   { id: "TraCuuDuocChat", l: "Tra cứu dược chất", i: "⚗️" },
@@ -107,8 +106,7 @@ export default function Header() {
     window.location.reload();
   };
 
-  // --- HÀM HELPER: Render nội dung cột phải (Dynamic) ---
-  // SỬA: Thêm tham số groupKey để biết đang ở nhóm nào (ví dụ: Vitamin)
+  // --- HÀM HELPER: Render nội dung cột phải ---
   const renderDynamicContent = (
     dataConfig: any,
     itemLabel: string,
@@ -122,7 +120,8 @@ export default function Header() {
         <div className="animate-fade-in flex flex-col h-full items-center justify-center text-gray-400">
           {activeData && (
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="text-2xl">{activeData.icon}</span>{" "}
+              {/* FIX: Thêm as any ở đây để tránh lỗi nếu thiếu icon */}
+              <span className="text-2xl">{(activeData as any).icon}</span>{" "}
               {activeData.title}
             </h3>
           )}
@@ -136,7 +135,8 @@ export default function Header() {
         <div className="flex items-center gap-2 mb-6 pb-2 border-b">
           {(Icons as any)[activeMegaTab] || (
             <span className="text-2xl text-blue-600">
-              {activeData.icon || ""}
+              {/* FIX: Thêm as any ở đây nữa */}
+              {(activeData as any).icon || ""}
             </span>
           )}
           <h3 className="text-xl font-bold text-gray-800">
@@ -152,7 +152,6 @@ export default function Header() {
             activeData.type === "small" ? (
               <SmallItem
                 key={idx}
-                // SỬA: Thêm tham số group vào URL: ?group=Vitamin&sub=Canxi
                 href={`/category/${itemLabel}?group=${groupKey}&sub=${item.sub}`}
                 sticker={item.sticker}
                 title={item.title}
@@ -161,7 +160,6 @@ export default function Header() {
             ) : (
               <GridItem
                 key={idx}
-                // SỬA: Thêm tham số group vào URL: ?group=Vitamin&sub=Canxi
                 href={`/category/${itemLabel}?group=${groupKey}&sub=${item.sub}`}
                 sticker={item.sticker}
                 title={item.title}
@@ -242,7 +240,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* --- TẦNG 2: MEGA MENU (ĐÃ LÀM GỌN) --- */}
+      {/* --- TẦNG 2: MEGA MENU --- */}
       <div className="hidden md:block bg-blue-800/50 relative">
         <div className="container mx-auto">
           <ul className="flex justify-center gap-6 text-sm font-medium text-white px-4">
@@ -261,7 +259,7 @@ export default function Header() {
                     {/* --- SIDEBAR TRÁI --- */}
                     <div className="w-1/4 bg-gray-50 p-2 overflow-y-auto border-r">
                       <ul className="space-y-1">
-                        {/* CASE 1: Menu Động (TPCN, DMP, CSCN, TBYT) */}
+                        {/* CASE 1: Menu Động */}
                         {item.type === "dynamic" &&
                           item.data &&
                           Object.keys(item.data).map((key) => (
@@ -275,11 +273,11 @@ export default function Header() {
                               }`}
                             >
                               <Link
-                                // SỬA: Thêm tham số group vào URL cho link sidebar trái
                                 href={`${item.href}?group=${key}`}
                                 className="flex items-center gap-2 w-full"
                               >
                                 <span className="text-xl">
+                                  {/* FIX QUAN TRỌNG: Thêm as any để tránh lỗi TypeScript */}
                                   {(Icons as any)[key] ||
                                     (item.data[key] as any).icon ||
                                     "📦"}
@@ -290,7 +288,7 @@ export default function Header() {
                             </li>
                           ))}
 
-                        {/* CASE 2: Menu Thuốc (Custom) */}
+                        {/* CASE 2: Menu Thuốc */}
                         {item.type === "custom_thuoc" &&
                           THUOC_SIDEBAR.map((sub) => (
                             <li
@@ -311,7 +309,7 @@ export default function Header() {
                             </li>
                           ))}
 
-                        {/* CASE 3: Menu Bệnh (Custom) */}
+                        {/* CASE 3: Menu Bệnh */}
                         {item.type === "custom_benh" && (
                           <>
                             <li className="px-4 py-3 bg-blue-50 text-blue-700 font-bold rounded shadow-sm cursor-pointer flex justify-between items-center border-l-4 border-blue-600">
@@ -344,8 +342,6 @@ export default function Header() {
 
                     {/* --- CONTENT PHẢI --- */}
                     <div className="w-3/4 p-6 overflow-y-auto bg-white">
-                      {/* CASE 1: Content Động (Dùng hàm helper) */}
-                      {/* SỬA: Truyền thêm activeMegaTab (chính là groupKey như Vitamin, SinhLy...) vào hàm render */}
                       {item.type === "dynamic" &&
                         renderDynamicContent(
                           item.data,
@@ -353,7 +349,7 @@ export default function Header() {
                           activeMegaTab
                         )}
 
-                      {/* Hiển thị thêm Banner/Sản phẩm bán chạy cho TPCN & DMP */}
+                      {/* Banner / Sản phẩm bán chạy */}
                       {["TPCN", "DMP"].includes(item.id) && (
                         <div className="mt-8 border-t pt-4">
                           <div className="flex justify-between items-center mb-4 border-l-4 border-blue-600 pl-3">
@@ -389,7 +385,7 @@ export default function Header() {
                         </div>
                       )}
 
-                      {/* CASE 2: Content Thuốc (Custom) */}
+                      {/* Content Thuốc */}
                       {item.type === "custom_thuoc" &&
                         activeMegaTab === "TraCuuThuoc" && (
                           <div className="animate-fade-in grid grid-cols-3 gap-4 mb-6">
@@ -412,10 +408,9 @@ export default function Header() {
                           </div>
                         )}
 
-                      {/* CASE 3: Content Bệnh (Custom) */}
+                      {/* Content Bệnh */}
                       {item.type === "custom_benh" && (
                         <div className="grid grid-cols-2 gap-6 mb-6">
-                          {/* Bài viết mẫu 1 */}
                           <div className="flex flex-col gap-2 group cursor-pointer">
                             <div className="h-40 bg-gray-100 rounded-lg overflow-hidden relative">
                               <div className="w-full h-full bg-blue-100 flex items-center justify-center text-gray-400">
@@ -429,7 +424,6 @@ export default function Header() {
                               Tiểu đường là căn bệnh nguy hiểm...
                             </p>
                           </div>
-                          {/* Bài viết mẫu 2 */}
                           <div className="flex flex-col gap-2 group cursor-pointer">
                             <div className="h-40 bg-gray-100 rounded-lg overflow-hidden relative">
                               <div className="w-full h-full bg-green-100 flex items-center justify-center text-gray-400">
