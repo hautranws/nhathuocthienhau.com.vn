@@ -281,7 +281,7 @@ export default function Header() {
                               >
                                 <span className="text-xl">
                                   {(Icons as any)[key] ||
-                                    item.data[key].icon ||
+                                    (item.data[key] as any).icon ||
                                     "📦"}
                                 </span>
                                 {item.data[key].title}
