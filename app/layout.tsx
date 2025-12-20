@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
-import Header from "../components/Header";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -17,10 +19,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      {/* THÊM suppressHydrationWarning={true} VÀO DÒNG DƯỚI ĐÂY */}
+      <body className={inter.className} suppressHydrationWarning={true}>
         <CartProvider>
-          <Header /> {/* <--- 2. Đặt Header nằm cố định ở đây */}
-          {children} {/* Đây là nội dung thay đổi (Trang chủ/Chi tiết) */}
+          <Header />
+          {children}
+          <Footer />
         </CartProvider>
       </body>
     </html>
