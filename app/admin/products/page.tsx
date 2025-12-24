@@ -13,11 +13,10 @@ export default function ProductManagementPage() {
     setDebugInfo("Đang kết nối...");
 
     try {
-      // --- SỬA LỖI Ở ĐÂY: Đổi created_at thành id ---
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .order("id", { ascending: false }); // Sắp xếp theo ID giảm dần (Mới nhất lên đầu)
+        .order("id", { ascending: false });
 
       if (error) {
         setDebugInfo(`❌ Lỗi: ${error.message}`);
@@ -50,6 +49,23 @@ export default function ProductManagementPage() {
       fetchProducts();
     }
   };
+
+  // --- MỚI: Hàm xử lý hiển thị ảnh đại diện ---
+  // Giúp code không bị lỗi khi chuyển từ 1 ảnh sang nhiều ảnh
+  const getThumbnail = (imgData: string) => {
+    if (!imgData) return null;
+    try {
+      // Thử xem dữ liệu có phải là danh sách nhiều ảnh không
+      const parsed = JSON.parse(imgData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed[0]; // Lấy ảnh đầu tiên
+      }
+      return imgData; // Nếu không phải mảng, trả về như cũ
+    } catch (e) {
+      return imgData; // Nếu là link ảnh cũ (không phải JSON)
+    }
+  };
+  // ---------------------------------------------
 
   return (
     <div className="min-h-screen bg-gray-100 p-8 font-sans">
@@ -93,7 +109,11 @@ export default function ProductManagementPage() {
                     <td className="p-4 text-gray-500">#{p.id}</td>
                     <td className="p-4">
                       {p.img ? (
-                        <img src={p.img} className="w-10 h-10 object-contain" />
+                        <img
+                          src={getThumbnail(p.img)} // <-- SỬ DỤNG HÀM MỚI TẠI ĐÂY
+                          alt=""
+                          className="w-10 h-10 object-contain border rounded bg-white"
+                        />
                       ) : (
                         "No Img"
                       )}

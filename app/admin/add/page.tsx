@@ -1,13 +1,20 @@
 "use client";
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import Link from "next/link"; // Import Link để quay về Dashboard
+import Link from "next/link";
 
-// 1. Import dữ liệu để làm Menu chọn (Tránh gõ sai chính tả)
-import { TPCN_DATA, DMP_DATA, CSCN_DATA, TBYT_DATA } from "@/components/data";
+// 1. Import dữ liệu để làm Menu chọn
+import {
+  TPCN_DATA,
+  DMP_DATA,
+  CSCN_DATA,
+  TBYT_DATA,
+  THUOC_DATA,
+} from "@/components/data";
 
 // Gộp dữ liệu lại để dùng cho Dropdown
 const CATEGORY_OPTIONS: any = {
+  Thuốc: THUOC_DATA,
   "Thực phẩm chức năng": TPCN_DATA,
   "Dược mỹ phẩm": DMP_DATA,
   "Chăm sóc cá nhân": CSCN_DATA,
@@ -16,36 +23,79 @@ const CATEGORY_OPTIONS: any = {
 
 export default function AddProductPage() {
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false); // Trạng thái đang upload ảnh
+
+  // --- MỚI: State quản lý MẢNG file ảnh (Thay vì 1 file như trước) ---
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
   // State lưu dữ liệu form
   const [formData, setFormData] = useState({
     title: "",
     price: "",
     old_price: "",
-    img: "", // Link ảnh
-    category: "", // Cấp 1 (Chỉ chọn 1)
-    sub_category: [] as string[], // Cấp 3 (Chọn nhiều - Mảng)
+    img: "", // Trường này sẽ lưu chuỗi JSON của mảng ảnh (VD: '["link1", "link2"]')
+    category: "",
+    sub_category: [] as string[],
     brand: "",
-    origin: "", // Xuất xứ
-    unit: "", // Đơn vị (Hộp/Vỉ)
+    origin: "",
+    unit: "",
     description: "",
   });
 
   // Xử lý khi chọn Danh mục cha -> Tự động load danh mục con
   const [subOptions, setSubOptions] = useState<any[]>([]);
 
+  // --- MỚI: Hàm xử lý khi chọn NHIỀU file từ máy tính ---
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      // Chuyển FileList thành Array để dễ xử lý
+      const fileArray = Array.from(files);
+
+      // Kiểm tra giới hạn 6 ảnh
+      if (fileArray.length > 6) {
+        alert("⚠️ Bạn chỉ được chọn tối đa 6 ảnh!");
+        // Chỉ lấy 6 ảnh đầu tiên nếu chọn quá
+        const limitedFiles = fileArray.slice(0, 6);
+        setSelectedFiles(limitedFiles);
+        const urls = limitedFiles.map((file) => URL.createObjectURL(file));
+        setPreviewUrls(urls);
+      } else {
+        setSelectedFiles(fileArray);
+        // Tạo link xem trước cho tất cả ảnh
+        const urls = fileArray.map((file) => URL.createObjectURL(file));
+        setPreviewUrls(urls);
+      }
+    }
+  };
+
+  // --- [ĐÃ SỬA] LOGIC LẤY DANH MỤC CON THÔNG MINH HƠN ---
   const handleCategoryChange = (e: any) => {
     const selectedCat = e.target.value;
-    // Khi đổi danh mục cha, reset danh mục con đã chọn
     setFormData({ ...formData, category: selectedCat, sub_category: [] });
 
     if (selectedCat && CATEGORY_OPTIONS[selectedCat]) {
       const groupData = CATEGORY_OPTIONS[selectedCat];
       let items: any[] = [];
+
+      // Duyệt qua các nhóm lớn (VD: NhomTriLieu, Vitamin...)
       Object.values(groupData).forEach((group: any) => {
-        if (group.items) items = [...items, ...group.items];
+        if (group.items) {
+          // Duyệt qua từng mục trong nhóm
+          group.items.forEach((item: any) => {
+            // KIỂM TRA: Nếu item có children (dạng Thuốc), lấy children ra
+            if (item.children && item.children.length > 0) {
+              items = [...items, ...item.children];
+            } else {
+              // Nếu không có children (dạng TPCN), lấy chính item đó
+              items.push(item);
+            }
+          });
+        }
       });
-      // Loại bỏ trùng lặp (nếu có) và sắp xếp
+
+      // Lọc trùng lặp (nếu có)
       const uniqueItems = Array.from(new Set(items.map((i) => i.title))).map(
         (title) => items.find((i) => i.title === title)
       );
@@ -54,19 +104,17 @@ export default function AddProductPage() {
       setSubOptions([]);
     }
   };
+  // -------------------------------------------------------
 
-  // Xử lý chọn nhiều danh mục con (Checkbox)
   const handleSubCategoryChange = (subTitle: string) => {
     setFormData((prev) => {
       const currentSubs = prev.sub_category;
       if (currentSubs.includes(subTitle)) {
-        // Nếu đã có -> Bỏ chọn (Xóa khỏi mảng)
         return {
           ...prev,
           sub_category: currentSubs.filter((s) => s !== subTitle),
         };
       } else {
-        // Chưa có -> Thêm vào mảng
         return { ...prev, sub_category: [...currentSubs, subTitle] };
       }
     });
@@ -82,27 +130,72 @@ export default function AddProductPage() {
       return;
     }
 
-    // Chuyển mảng thành chuỗi để lưu vào DB
-    const subCategoryString = formData.sub_category.join(", ");
+    try {
+      let finalImageString = ""; // Chuỗi JSON để lưu vào DB
 
-    const payload = {
-      title: formData.title,
-      price: formData.price,
-      old_price: formData.old_price,
-      img: formData.img,
-      category: formData.category,
-      sub_category: subCategoryString,
-      brand: formData.brand,
-      origin: formData.origin,
-      unit: formData.unit,
-      description: formData.description,
-    };
+      // --- LOGIC UPLOAD NHIỀU ẢNH VÀO BUCKET 'product' ---
+      if (selectedFiles.length > 0) {
+        setUploading(true);
+        const uploadedUrls: string[] = [];
 
-    const { error } = await supabase.from("products").insert([payload]);
+        // Duyệt qua từng file và upload
+        for (const file of selectedFiles) {
+          // Tạo tên file ngẫu nhiên để không bị trùng
+          const fileName = `${Date.now()}_${Math.random()
+            .toString(36)
+            .substring(7)}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
 
-    if (error) {
-      alert("Lỗi đăng bài: " + error.message);
-    } else {
+          // Upload vào bucket 'product'
+          const { error: uploadError } = await supabase.storage
+            .from("product")
+            .upload(fileName, file);
+
+          if (uploadError)
+            throw new Error("Lỗi upload: " + uploadError.message);
+
+          // Lấy link công khai
+          const { data: urlData } = supabase.storage
+            .from("product")
+            .getPublicUrl(fileName);
+
+          uploadedUrls.push(urlData.publicUrl);
+        }
+
+        // Chuyển mảng link thành chuỗi JSON (Ví dụ: '["url1", "url2"]')
+        finalImageString = JSON.stringify(uploadedUrls);
+        setUploading(false);
+      } else if (formData.img) {
+        // Nếu người dùng nhập link thủ công (không upload file)
+        // Ta cũng đóng gói nó thành mảng JSON chứa 1 phần tử để đồng bộ
+        // Kiểm tra xem nó đã là JSON chưa, nếu chưa thì bọc lại
+        if (formData.img.startsWith("[")) {
+          finalImageString = formData.img;
+        } else {
+          finalImageString = JSON.stringify([formData.img]);
+        }
+      }
+      // ---------------------------------------------------
+
+      // Chuyển mảng sub_category thành chuỗi
+      const subCategoryString = formData.sub_category.join(", ");
+
+      const payload = {
+        title: formData.title,
+        price: formData.price,
+        old_price: formData.old_price,
+        img: finalImageString, // Lưu chuỗi JSON ảnh
+        category: formData.category,
+        sub_category: subCategoryString,
+        brand: formData.brand,
+        origin: formData.origin,
+        unit: formData.unit,
+        description: formData.description,
+      };
+
+      const { error } = await supabase.from("products").insert([payload]);
+
+      if (error) throw error;
+
       alert("✅ Đăng sản phẩm thành công!");
       // Reset form
       setFormData({
@@ -117,27 +210,30 @@ export default function AddProductPage() {
         unit: "",
         description: "",
       });
+      setSelectedFiles([]);
+      setPreviewUrls([]);
+    } catch (error: any) {
+      alert("❌ Lỗi: " + error.message);
+    } finally {
+      setLoading(false);
+      setUploading(false);
     }
-    setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-8 border border-gray-200">
-        {/* --- PHẦN HEADER CÓ NÚT LINK SANG TRANG QUẢN LÝ --- */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
           <h1 className="text-2xl font-bold text-blue-800">
-            QUẢN LÝ: ĐĂNG SẢN PHẨM MỚI
+            QUẢN LÝ: ĐĂNG SẢN PHẨM (ALBUM ẢNH)
           </h1>
           <div className="flex items-center gap-3">
-            {/* Nút này sẽ dẫn sang trang Danh sách/Sửa/Xóa mà bạn đã tạo */}
             <Link
               href="/admin/products"
               className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold hover:bg-yellow-200 transition flex items-center gap-1"
             >
               📋 Danh sách & Sửa/Xóa
             </Link>
-
             <Link
               href="/admin"
               className="text-sm text-gray-500 hover:text-blue-600 underline whitespace-nowrap"
@@ -165,30 +261,66 @@ export default function AddProductPage() {
             />
           </div>
 
-          {/* Hàng 2: Link Ảnh */}
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">
-              Link Ảnh (URL)
+          {/* --- KHU VỰC UPLOAD NHIỀU ẢNH (MAX 6) --- */}
+          <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-400">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              📸 Bộ sưu tập ảnh (Tối đa 6 ảnh)
             </label>
+
             <input
-              type="text"
-              className="w-full p-3 border rounded-lg focus:outline-blue-500"
-              placeholder="https://..."
-              value={formData.img}
-              onChange={(e) =>
-                setFormData({ ...formData, img: e.target.value })
-              }
+              type="file"
+              accept="image/*"
+              multiple // Cho phép chọn nhiều file cùng lúc
+              onChange={handleFileChange}
+              className="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
             />
-            {formData.img && (
-              <img
-                src={formData.img}
-                alt="Preview"
-                className="h-20 w-20 object-contain mt-2 border rounded"
-              />
+            <p className="text-xs text-gray-400 mt-1 italic">
+              Nhấn giữ phím <strong>Ctrl</strong> (hoặc Command) để chọn nhiều
+              ảnh.
+            </p>
+
+            {/* Grid hiển thị các ảnh xem trước */}
+            {previewUrls.length > 0 ? (
+              <div className="mt-4 grid grid-cols-3 md:grid-cols-6 gap-2">
+                {previewUrls.map((url, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Preview ${index}`}
+                      className="h-20 w-20 object-cover border rounded bg-white shadow-sm"
+                    />
+                    <span className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] px-1 rounded-bl opacity-80">
+                      {index + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Backup nhập link tay
+              <div className="mt-4">
+                <p className="text-xs text-gray-400 mb-1">
+                  Hoặc dán 1 link ảnh (nếu không upload):
+                </p>
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded text-sm"
+                  placeholder="https://..."
+                  value={formData.img}
+                  onChange={(e) =>
+                    setFormData({ ...formData, img: e.target.value })
+                  }
+                />
+              </div>
             )}
           </div>
+          {/* ------------------------------------------- */}
 
-          {/* Hàng 3: Danh mục (QUAN TRỌNG NHẤT) */}
+          {/* Hàng 3: Danh mục */}
           <div className="bg-blue-50 p-6 rounded-lg border border-blue-100">
             <div className="mb-4">
               <label className="block text-sm font-bold text-blue-800 mb-2">
@@ -201,6 +333,7 @@ export default function AddProductPage() {
                 required
               >
                 <option value="">-- Chọn danh mục --</option>
+                <option value="Thuốc">Thuốc</option>
                 <option value="Thực phẩm chức năng">Thực phẩm chức năng</option>
                 <option value="Dược mỹ phẩm">Dược mỹ phẩm</option>
                 <option value="Chăm sóc cá nhân">Chăm sóc cá nhân</option>
@@ -208,7 +341,7 @@ export default function AddProductPage() {
               </select>
             </div>
 
-            {/* Chọn nhiều loại chi tiết (Checkbox Grid) */}
+            {/* Chọn nhiều loại chi tiết */}
             <div>
               <label className="block text-sm font-bold text-blue-800 mb-2">
                 2. Chọn Loại Chi Tiết (Có thể chọn nhiều)
@@ -350,14 +483,16 @@ export default function AddProductPage() {
           {/* Nút Submit */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploading}
             className={`w-full py-4 rounded-lg font-bold text-white text-lg transition ${
-              loading
+              loading || uploading
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700 shadow-lg"
             }`}
           >
-            {loading ? "Đang xử lý..." : "🚀 ĐĂNG SẢN PHẨM NGAY"}
+            {loading || uploading
+              ? "Đang Upload ảnh & Lưu..."
+              : "🚀 ĐĂNG SẢN PHẨM NGAY"}
           </button>
         </form>
       </div>

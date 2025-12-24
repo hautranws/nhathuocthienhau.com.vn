@@ -5,16 +5,19 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabaseClient";
 
-// Import Component con và Data đã tách
+// Import Component con
 import { Icons } from "./icons";
 import { GridItem, SmallItem, ProductCard } from "./sub-components";
 import SearchBar from "./header/SearchBar";
 import {
   NAV_ITEMS,
-  THUOC_SIDEBAR,
-  THUOC_GRID,
+  // THUOC_SIDEBAR, // <-- KHÔNG CẦN DÙNG CÁI NÀY NỮA
+  // THUOC_GRID,    // <-- KHÔNG CẦN DÙNG CÁI NÀY NỮA
   BENH_SIDEBAR,
 } from "./header/constants";
+
+// --- [MỚI] IMPORT DATA THUỐC ---
+import { THUOC_DATA } from "@/components/data"; 
 
 export default function Header() {
   const { totalItems } = useCart();
@@ -63,10 +66,10 @@ export default function Header() {
     }
 
     // --- LOGIC MỚI: Xử lý nút "Xem thêm" ---
-    const MAX_DISPLAY = 5; // Chỉ hiện tối đa 5 mục
+    const MAX_DISPLAY = 6; // Chỉ hiện tối đa 6 mục
     const shouldShowMore = activeData.items.length > MAX_DISPLAY;
 
-    // Nếu dài hơn 5 thì cắt lấy 5 cái đầu, ngược lại lấy hết
+    // Nếu dài hơn thì cắt lấy đầu, ngược lại lấy hết
     const displayItems = shouldShowMore
       ? activeData.items.slice(0, MAX_DISPLAY)
       : activeData.items;
@@ -110,36 +113,19 @@ export default function Header() {
             )
           )}
 
-          {/* --- NÚT XEM THÊM (Chỉ hiện khi danh sách dài hơn 5) --- */}
+          {/* --- NÚT XEM THÊM --- */}
           {shouldShowMore && (
             <Link
-              // Link này sẽ dẫn đến trang danh sách đầy đủ của nhóm đó
               href={`/category/${itemLabel}?group=${groupKey}`}
               className="flex items-center gap-3 p-2 border border-gray-200 rounded-lg hover:shadow-md bg-white group/more transition-all cursor-pointer h-full min-h-[60px]"
             >
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover/more:text-blue-600 group-hover/more:bg-blue-100 shrink-0">
-                {/* Icon 3 chấm tròn */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="1"></circle>
-                  <circle cx="19" cy="12" r="1"></circle>
-                  <circle cx="5" cy="12" r="1"></circle>
-                </svg>
+                <span className="text-xl">➔</span>
               </div>
               <div className="flex flex-col justify-center">
                 <span className="font-bold text-sm text-gray-700 group-hover/more:text-blue-700">
-                  Xem thêm
+                  Xem tất cả
                 </span>
-                {/* Hiển thị số lượng còn lại */}
                 <span className="text-xs text-gray-500">
                   Còn {activeData.items.length - MAX_DISPLAY} mục
                 </span>
@@ -241,17 +227,27 @@ export default function Header() {
               <li
                 key={item.id}
                 className="group py-3 cursor-pointer hover:text-blue-700 flex items-center gap-1 static"
-                onMouseEnter={() =>
-                  item.defaultTab && setActiveMegaTab(item.defaultTab)
-                }
+                onMouseEnter={() => {
+                  // Nếu là Thuốc thì set mặc định tab đầu tiên của Thuốc
+                  if (item.label === "Thuốc" && THUOC_DATA["NhomTriLieu"]?.items[0]) {
+                    setActiveMegaTab(THUOC_DATA["NhomTriLieu"].items[0].sub);
+                  } else if (item.defaultTab) {
+                    setActiveMegaTab(item.defaultTab);
+                  }
+                }}
               >
                 <Link href={item.href}>{item.label}</Link>{" "}
                 <span className="text-xs">▼</span>
+                
+                {/* --- DROPDOWN PANEL --- */}
                 <div className="absolute top-full left-0 w-full bg-white text-gray-800 shadow-2xl rounded-b-lg border-t border-gray-200 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 z-40 origin-top text-left">
                   <div className="container mx-auto flex h-[500px]">
-                    {/* SIDEBAR TRÁI */}
-                    <div className="w-1/4 bg-gray-50 p-2 overflow-y-auto border-r">
+                    
+                    {/* --- SIDEBAR TRÁI --- */}
+                    <div className="w-1/4 bg-gray-50 p-2 overflow-y-auto border-r custom-scrollbar">
                       <ul className="space-y-1">
+                        
+                        {/* CASE 1: Dynamic cho TPCN, Dược mỹ phẩm... */}
                         {item.type === "dynamic" &&
                           item.data &&
                           Object.keys(item.data).map((key) => (
@@ -279,24 +275,26 @@ export default function Header() {
                             </li>
                           ))}
 
-                        {/* CASE 2: Menu Thuốc */}
-                        {item.type === "custom_thuoc" &&
-                          THUOC_SIDEBAR.map((sub) => (
+                        {/* CASE 2: [ĐÃ SỬA] Menu Thuốc - Lấy từ THUOC_DATA */}
+                        {item.label === "Thuốc" && THUOC_DATA["NhomTriLieu"]?.items.map((subItem: any) => (
                             <li
-                              key={sub.id}
-                              onMouseEnter={() => setActiveMegaTab(sub.id)}
-                              className={`px-4 py-4 font-bold rounded-lg cursor-pointer flex items-center gap-3 mb-2 transition ${
-                                activeMegaTab === sub.id
+                              key={subItem.sub}
+                              onMouseEnter={() => setActiveMegaTab(subItem.sub)}
+                              className={`px-4 py-3 font-bold rounded cursor-pointer flex justify-between items-center transition ${
+                                activeMegaTab === subItem.sub
                                   ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600"
                                   : "hover:bg-white text-gray-600 hover:text-blue-700"
                               }`}
                             >
                               <Link
-                                href={`/category/Thuốc?sub=${sub.id}`}
+                                // Link vào Cấp 3: ?group=NhomTriLieu&sub=ThuocDiUng
+                                href={`/category/Thuốc?group=NhomTriLieu&sub=${subItem.sub}`}
                                 className="flex items-center gap-2 w-full"
                               >
-                                <span className="text-xl">{sub.i}</span> {sub.l}
+                                <span className="text-xl">{subItem.sticker || "💊"}</span> 
+                                <span className="line-clamp-1">{subItem.title}</span>
                               </Link>
+                              <span className="text-xs">›</span>
                             </li>
                           ))}
 
@@ -331,8 +329,10 @@ export default function Header() {
                       </ul>
                     </div>
 
-                    {/* CONTENT PHẢI */}
-                    <div className="w-3/4 p-6 overflow-y-auto bg-white">
+                    {/* --- CONTENT PHẢI --- */}
+                    <div className="w-3/4 p-6 overflow-y-auto bg-white custom-scrollbar">
+                      
+                      {/* Render nội dung cho TPCN, DMP */}
                       {item.type === "dynamic" &&
                         renderDynamicContent(
                           item.data,
@@ -340,7 +340,44 @@ export default function Header() {
                           activeMegaTab
                         )}
 
-                      {/* Banner / Sản phẩm bán chạy */}
+                      {/* [ĐÃ SỬA] Content Thuốc - Hiện lưới danh mục con (Level 4) */}
+                      {item.label === "Thuốc" && (() => {
+                          // Tìm mục thuốc đang active trong danh sách NhomTriLieu
+                          const activeThuoc = THUOC_DATA["NhomTriLieu"]?.items.find((i: any) => i.sub === activeMegaTab);
+                          
+                          if (!activeThuoc || !activeThuoc.children) {
+                              return (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                    <div className="text-4xl mb-2">💊</div>
+                                    <p>Chọn một nhóm thuốc để xem chi tiết</p>
+                                </div>
+                              );
+                          }
+
+                          return (
+                            <div className="animate-fade-in">
+                                <div className="flex items-center gap-2 mb-6 pb-2 border-b">
+                                    <span className="text-2xl">{activeThuoc.sticker}</span>
+                                    <h3 className="text-xl font-bold text-gray-800">{activeThuoc.title}</h3>
+                                </div>
+                                {/* Lưới danh mục con (Level 4) */}
+                                <div className="grid grid-cols-3 gap-4">
+                                    {activeThuoc.children.map((child: any, idx: number) => (
+                                        <GridItem
+                                            key={idx}
+                                            // Link vào Cấp 4: ?group=...&sub=...&child=...
+                                            href={`/category/Thuốc?group=NhomTriLieu&sub=${activeThuoc.sub}&child=${child.sub}`}
+                                            sticker={child.sticker}
+                                            title={child.title}
+                                            count={child.count}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                          );
+                      })()}
+
+                      {/* Banner / Sản phẩm bán chạy (Chung cho TPCN, DMP) */}
                       {["TPCN", "DMP"].includes(item.id) && (
                         <div className="mt-8 border-t pt-4">
                           <div className="flex justify-between items-center mb-4 border-l-4 border-blue-600 pl-3">
@@ -355,51 +392,28 @@ export default function Header() {
                             <ProductCard
                               title="Viên uống Immuvita Easylife"
                               price="390.000đ"
-                              img="[Ảnh Immuvita]"
+                              img="https://cdn.nhathuoclongchau.com.vn/unsafe/375x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/00021873_vien-uong-immuvita-easylife-bo-phe-ho-tro-giam-ho-30-vien-7313-61fa_large_cc87c933ea.jpg"
                             />
                             <ProductCard
                               title="Siro ống uống Canxi-D3-K2"
                               price="105.000đ"
-                              img="[Ảnh Siro Canxi]"
+                              img="https://cdn.nhathuoclongchau.com.vn/unsafe/375x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/00033324_siro-ong-uong-canxi-d3-k2-argi-calci-plus-hop-20-ong-x-10ml-6967-6284_large_24e5272a08.jpg"
                             />
                             <ProductCard
                               title="Siro Brauer Baby Kids"
                               price="396.000đ"
-                              img="[Ảnh Brauer]"
+                              img="https://cdn.nhathuoclongchau.com.vn/unsafe/375x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/00029302_siro-brauer-baby-kids-liquid-vitamin-c-ho-tro-tang-suc-de-khang-100ml-5384-622b_large_d07548f072.jpg"
                             />
                             <ProductCard
                               title="Viên uống Omexxel 3-6-9"
                               price="453.000đ"
-                              img="[Ảnh Omexxel]"
+                              img="https://cdn.nhathuoclongchau.com.vn/unsafe/375x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/00016480_omexxel-3-6-9-excel-100v-9963-5e74_large_29227f29b4.jpg"
                             />
                           </div>
                         </div>
                       )}
 
-                      {/* Content Thuốc */}
-                      {item.type === "custom_thuoc" &&
-                        activeMegaTab === "TraCuuThuoc" && (
-                          <div className="animate-fade-in grid grid-cols-3 gap-4 mb-6">
-                            {THUOC_GRID.map((i, x) => (
-                              <Link
-                                key={x}
-                                href="#"
-                                className="flex items-center gap-3 p-4 border rounded-lg hover:shadow-md bg-white group/card"
-                              >
-                                <div
-                                  className={`w-12 h-12 ${i.bg} rounded-lg flex items-center justify-center text-2xl`}
-                                >
-                                  {i.i}
-                                </div>
-                                <span className="font-semibold text-sm text-gray-700 group-hover/card:text-blue-700">
-                                  {i.t}
-                                </span>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-
-                      {/* Content Bệnh */}
+                      {/* Content Bệnh (Giữ nguyên) */}
                       {item.type === "custom_benh" && (
                         <div className="grid grid-cols-2 gap-6 mb-6">
                           <div className="flex flex-col gap-2 group cursor-pointer">
@@ -439,7 +453,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* MENU MOBILE */}
+      {/* MENU MOBILE (Giữ nguyên) */}
       {isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/50" onClick={toggleMenu}></div>

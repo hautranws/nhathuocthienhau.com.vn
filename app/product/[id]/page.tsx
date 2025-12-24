@@ -37,6 +37,25 @@ export default async function ProductDetail(props: {
     );
   }
 
+  // --- MỚI: XỬ LÝ LOGIC ALBUM ẢNH (6 HÌNH) ---
+  let productImages: string[] = [];
+  try {
+    // 1. Thử giải mã chuỗi JSON (ví dụ: '["url1", "url2"]')
+    const parsed = JSON.parse(product.img);
+
+    // 2. Kiểm tra xem có phải là mảng không
+    if (Array.isArray(parsed)) {
+      productImages = parsed;
+    } else {
+      // Nếu không phải mảng (hiếm), coi như là 1 ảnh
+      productImages = [product.img];
+    }
+  } catch (e) {
+    // 3. Nếu lỗi (do là dữ liệu cũ dạng link đơn), thì ép thành mảng 1 phần tử
+    productImages = product.img ? [product.img] : [];
+  }
+  // ---------------------------------------------
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans pb-10 pt-6">
       <div className="container mx-auto px-4">
@@ -51,11 +70,13 @@ export default async function ProductDetail(props: {
 
         {/* --- KHỐI THÔNG TIN CHÍNH --- */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row mt-4 p-6 gap-8">
-          {/* CỘT TRÁI: ẢNH (ĐÃ SỬA LẠI BIẾN img) */}
+          {/* CỘT TRÁI: ẢNH (ĐÃ ĐƯỢC NÂNG CẤP ALBUM) */}
           <div className="md:w-5/12">
             <ProductGallery
-              mainImage={product.img} // SỬA: Đổi từ image_url thành img (để khớp DB)
-              gallery={null} // Tạm thời chưa có cột gallery
+              // Ảnh chính là ảnh đầu tiên trong mảng (nếu có)
+              mainImage={productImages.length > 0 ? productImages[0] : ""}
+              // Truyền toàn bộ danh sách ảnh vào gallery
+              gallery={productImages}
             />
           </div>
 
