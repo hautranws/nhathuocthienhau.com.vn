@@ -41,6 +41,13 @@ export default function AddProductPage() {
     origin: "",
     unit: "",
     description: "",
+    // --- [MỚI] THÊM CÁC TRƯỜNG CHI TIẾT ĐỂ TRÁNH LỖI "UNDEFINED" ---
+    registration_no: "", // Số đăng ký
+    dosage_form: "", // Dạng bào chế
+    specification: "", // Quy cách đóng gói
+    manufacturer: "", // Nhà sản xuất
+    ingredients: "", // Thành phần
+    expiry: "", // Hạn sử dụng
   });
 
   // Xử lý khi chọn Danh mục cha -> Tự động load danh mục con
@@ -190,6 +197,13 @@ export default function AddProductPage() {
         origin: formData.origin,
         unit: formData.unit,
         description: formData.description,
+        // --- [MỚI] GỬI THÊM CÁC TRƯỜNG NÀY ---
+        registration_no: formData.registration_no,
+        dosage_form: formData.dosage_form,
+        specification: formData.specification,
+        manufacturer: formData.manufacturer,
+        ingredients: formData.ingredients,
+        expiry: formData.expiry,
       };
 
       const { error } = await supabase.from("products").insert([payload]);
@@ -209,6 +223,12 @@ export default function AddProductPage() {
         origin: "",
         unit: "",
         description: "",
+        registration_no: "",
+        dosage_form: "",
+        specification: "",
+        manufacturer: "",
+        ingredients: "",
+        expiry: "",
       });
       setSelectedFiles([]);
       setPreviewUrls([]);
@@ -464,6 +484,114 @@ export default function AddProductPage() {
               />
             </div>
           </div>
+
+          {/* --- [MỚI] KHU VỰC THÔNG TIN CHI TIẾT (CHUẨN LONG CHÂU) --- */}
+          <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200 mt-6">
+            <h3 className="text-lg font-bold text-yellow-800 mb-4 border-b border-yellow-200 pb-2">
+              📋 Thông tin dược phẩm chi tiết
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Số đăng ký */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Số đăng ký
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border rounded-lg"
+                  placeholder="VD: 638/2023/ĐKSP"
+                  value={formData.registration_no}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      registration_no: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              {/* Dạng bào chế */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Dạng bào chế
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border rounded-lg"
+                  placeholder="VD: Viên nén, Siro..."
+                  value={formData.dosage_form}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dosage_form: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Quy cách */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Quy cách đóng gói
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border rounded-lg"
+                  placeholder="VD: Hộp 100 viên"
+                  value={formData.specification}
+                  onChange={(e) =>
+                    setFormData({ ...formData, specification: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Hạn sử dụng */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Hạn sử dụng
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border rounded-lg"
+                  placeholder="VD: 36 tháng"
+                  value={formData.expiry}
+                  onChange={(e) =>
+                    setFormData({ ...formData, expiry: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Nhà sản xuất */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Nhà sản xuất
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border rounded-lg"
+                  placeholder="VD: C. HEDENKAMP GMBH & CO. KG"
+                  value={formData.manufacturer}
+                  onChange={(e) =>
+                    setFormData({ ...formData, manufacturer: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Thành phần */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Thành phần (Ingredients)
+                </label>
+                <textarea
+                  className="w-full p-3 border rounded-lg h-24"
+                  placeholder="VD: Canxi hydrogen phosphat, Magie oxide, Vitamin C..."
+                  value={formData.ingredients}
+                  onChange={(e) =>
+                    setFormData({ ...formData, ingredients: e.target.value })
+                  }
+                ></textarea>
+              </div>
+            </div>
+          </div>
+          {/* ------------------------------------------------------------- */}
 
           {/* Hàng 6: Mô tả */}
           <div>

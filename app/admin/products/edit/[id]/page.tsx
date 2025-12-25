@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // Để chuyển trang sau khi sửa xong
-import { TPCN_DATA, DMP_DATA, CSCN_DATA, TBYT_DATA } from "@/components/data";
+import { useRouter } from "next/navigation"; 
+// 1. Thêm THUOC_DATA vào import
+import { TPCN_DATA, DMP_DATA, CSCN_DATA, TBYT_DATA, THUOC_DATA } from "@/components/data";
 
 const CATEGORY_OPTIONS: any = {
+  "Thuốc": THUOC_DATA, // 2. Thêm mục Thuốc vào đây
   "Thực phẩm chức năng": TPCN_DATA,
   "Dược mỹ phẩm": DMP_DATA,
   "Chăm sóc cá nhân": CSCN_DATA,
@@ -28,6 +30,13 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     origin: "",
     unit: "",
     description: "",
+    // --- [MỚI] THÊM CÁC TRƯỜNG CHI TIẾT ---
+    registration_no: "", // Số đăng ký
+    dosage_form: "",     // Dạng bào chế
+    specification: "",   // Quy cách đóng gói
+    manufacturer: "",    // Nhà sản xuất
+    ingredients: "",     // Thành phần
+    expiry: "",          // Hạn sử dụng
   });
 
   const [subOptions, setSubOptions] = useState<any[]>([]);
@@ -35,8 +44,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   // --- 1. Lấy dữ liệu cũ để điền vào form ---
   useEffect(() => {
     const fetchProduct = async () => {
-      // Vì params là Promise trong Next.js 15+ (nếu bạn dùng bản mới), cần await
-      // Nếu lỗi chỗ này, thử bỏ await ở params
       const { id } = await params; 
       
       const { data, error } = await supabase
@@ -47,12 +54,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
       if (error) {
         alert("Không tìm thấy sản phẩm!");
-        router.push("/admin/products"); // Quay về danh sách
+        router.push("/admin/products"); 
         return;
       }
 
       if (data) {
-        // Xử lý sub_category từ chuỗi "A, B" thành mảng ["A", "B"]
         let subs = [];
         if (data.sub_category) {
             subs = data.sub_category.split(",").map((s: string) => s.trim());
@@ -68,15 +74,31 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             brand: data.brand || "",
             origin: data.origin || "",
             unit: data.unit || "",
-            description: data.description || ""
+            description: data.description || "",
+            // --- [MỚI] Đổ dữ liệu chi tiết cũ vào form ---
+            registration_no: data.registration_no || "",
+            dosage_form: data.dosage_form || "",
+            specification: data.specification || "",
+            manufacturer: data.manufacturer || "",
+            ingredients: data.ingredients || "",
+            expiry: data.expiry || "",
         });
 
-        // Load danh mục con tương ứng
+        // Load danh mục con tương ứng (Cập nhật logic thông minh để lấy cả con của Thuốc)
         if (data.category && CATEGORY_OPTIONS[data.category]) {
             const groupData = CATEGORY_OPTIONS[data.category];
             let items: any[] = [];
             Object.values(groupData).forEach((group: any) => {
-              if (group.items) items = [...items, ...group.items];
+              if (group.items) {
+                 // Logic lấy cả danh mục con cấp 4 (dành cho Thuốc)
+                 group.items.forEach((item: any) => {
+                    if (item.children && item.children.length > 0) {
+                        items = [...items, ...item.children];
+                    } else {
+                        items.push(item);
+                    }
+                 });
+              }
             });
             const uniqueItems = Array.from(new Set(items.map(i => i.title)))
                 .map(title => items.find(i => i.title === title));
@@ -89,7 +111,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     fetchProduct();
   }, [params, router]);
 
-  // --- Logic xử lý thay đổi danh mục (Giống trang Add) ---
+  // --- Logic xử lý thay đổi danh mục ---
   const handleCategoryChange = (e: any) => {
     const selectedCat = e.target.value;
     setFormData({ ...formData, category: selectedCat, sub_category: [] });
@@ -98,7 +120,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       const groupData = CATEGORY_OPTIONS[selectedCat];
       let items: any[] = [];
       Object.values(groupData).forEach((group: any) => {
-        if (group.items) items = [...items, ...group.items];
+        if (group.items) {
+            // Logic lấy cả danh mục con cấp 4 (dành cho Thuốc)
+            group.items.forEach((item: any) => {
+               if (item.children && item.children.length > 0) {
+                   items = [...items, ...item.children];
+               } else {
+                   items.push(item);
+               }
+            });
+         }
       });
       const uniqueItems = Array.from(new Set(items.map(i => i.title)))
         .map(title => items.find(i => i.title === title));
@@ -128,20 +159,20 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     const subCategoryString = formData.sub_category.join(", ");
 
     const payload = {
-      ...formData,
+      ...formData, // spread operator đã bao gồm tất cả trường mới trong formData
       sub_category: subCategoryString,
     };
 
     const { error } = await supabase
       .from("products")
-      .update(payload) // Dùng update thay vì insert
-      .eq("id", id);   // Cập nhật đúng ID đang sửa
+      .update(payload) 
+      .eq("id", id);   
 
     if (error) {
       alert("Lỗi cập nhật: " + error.message);
     } else {
       alert("✅ Cập nhật thành công!");
-      router.push("/admin/products"); // Chuyển về trang danh sách
+      router.push("/admin/products"); 
     }
     setLoading(false);
   };
@@ -161,7 +192,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         </div>
 
         <form onSubmit={handleUpdate} className="space-y-6">
-           {/* (Phần Form này GIỐNG HỆT trang Add, chỉ khác nút Submit) */}
            {/* Tên SP */}
            <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Tên sản phẩm</label>
@@ -208,6 +238,37 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
            <div className="grid grid-cols-2 gap-4">
               <div><label className="block text-sm font-bold mb-1">Thương hiệu</label><input type="text" className="w-full p-3 border rounded-lg" value={formData.brand} onChange={(e) => setFormData({...formData, brand: e.target.value})} /></div>
               <div><label className="block text-sm font-bold mb-1">Xuất xứ</label><input type="text" className="w-full p-3 border rounded-lg" value={formData.origin} onChange={(e) => setFormData({...formData, origin: e.target.value})} /></div>
+           </div>
+
+           {/* --- [MỚI] KHU VỰC THÔNG TIN CHI TIẾT (CHUẨN LONG CHÂU) --- */}
+           <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200 mt-6">
+            <h3 className="text-lg font-bold text-yellow-800 mb-4 border-b border-yellow-200 pb-2">📋 Thông tin dược phẩm chi tiết</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Số đăng ký</label>
+                <input type="text" className="w-full p-3 border rounded-lg" value={formData.registration_no} onChange={(e) => setFormData({ ...formData, registration_no: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Dạng bào chế</label>
+                <input type="text" className="w-full p-3 border rounded-lg" value={formData.dosage_form} onChange={(e) => setFormData({ ...formData, dosage_form: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Quy cách</label>
+                <input type="text" className="w-full p-3 border rounded-lg" value={formData.specification} onChange={(e) => setFormData({ ...formData, specification: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Hạn sử dụng</label>
+                <input type="text" className="w-full p-3 border rounded-lg" value={formData.expiry} onChange={(e) => setFormData({ ...formData, expiry: e.target.value })} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Nhà sản xuất</label>
+                <input type="text" className="w-full p-3 border rounded-lg" value={formData.manufacturer} onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Thành phần</label>
+                <textarea className="w-full p-3 border rounded-lg h-24" value={formData.ingredients} onChange={(e) => setFormData({ ...formData, ingredients: e.target.value })}></textarea>
+              </div>
+            </div>
            </div>
 
            {/* Mô tả */}

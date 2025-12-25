@@ -2,6 +2,7 @@ import React from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import ProductGallery from "@/components/ProductGallery";
+import ProductSpecs from "@/components/ProductSpecs";
 
 // TẠM THỜI ẨN CÁC FILE CHƯA CÓ ĐỂ TRÁNH LỖI WEB
 // import Breadcrumb from "@/components/Breadcrumb";
