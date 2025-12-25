@@ -1,0 +1,89 @@
+"use client";
+import React from "react";
+import Link from "next/link";
+// 1. Import hook useCart
+import { useCart } from "@/context/CartContext";
+
+interface ProductProps {
+  product: {
+    id: number;
+    title: string;
+    price: number;
+    img: string;
+    unit?: string;
+    specification?: string;
+  };
+}
+
+const ProductCard: React.FC<ProductProps> = ({ product }) => {
+  // 2. Lấy hàm addToCart từ kho
+  const { addToCart } = useCart();
+
+  const getThumbnail = (imgData: string) => {
+    if (!imgData) return "https://via.placeholder.com/150";
+    try {
+      const parsed = JSON.parse(imgData);
+      return Array.isArray(parsed) ? parsed[0] : imgData;
+    } catch {
+      return imgData;
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-4 flex flex-col h-full relative group">
+      {/* ... (Phần hiển thị ảnh và tên giữ nguyên như cũ) ... */}
+      <Link href={`/products/${product.id}`} className="block mb-3">
+        {/* Code ảnh giữ nguyên */}
+        <div className="w-full aspect-square flex items-center justify-center overflow-hidden rounded-lg">
+          <img
+            src={getThumbnail(product.img)}
+            alt={product.title}
+            className="object-contain w-full h-full group-hover:scale-105 transition-transform duration-300"
+          />
+        </div>
+      </Link>
+
+      <Link href={`/products/${product.id}`} className="block mb-2">
+        <h3
+          className="text-gray-900 font-semibold text-sm leading-tight line-clamp-2 min-h-[40px]"
+          title={product.title}
+        >
+          {product.title}
+        </h3>
+      </Link>
+
+      {/* Code giá giữ nguyên */}
+      <div className="flex items-end gap-1 mb-2">
+        <span className="text-blue-600 font-bold text-lg">
+          {Number(product.price).toLocaleString("vi-VN")}đ
+        </span>
+        {product.unit && (
+          <span className="text-gray-500 text-sm mb-[2px]">
+            / {product.unit}
+          </span>
+        )}
+      </div>
+
+      <div className="mb-4">
+        {product.specification ? (
+          <div className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded inline-block">
+            {product.specification}
+          </div>
+        ) : (
+          <div className="h-[24px]"></div>
+        )}
+      </div>
+
+      {/* 3. SỬA NÚT MUA TẠI ĐÂY */}
+      <button
+        className="mt-auto w-full bg-blue-600 text-white font-bold py-2.5 rounded-full hover:bg-blue-700 transition-colors text-sm"
+        // Gọi hàm thêm thật
+        onClick={() => addToCart(product)}
+      >
+        Chọn mua
+      </button>
+    </div>
+  );
+};
+
+export default ProductCard;
