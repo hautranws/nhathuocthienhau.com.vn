@@ -3,10 +3,9 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import ProductGallery from "@/components/ProductGallery";
 import ProductSpecs from "@/components/ProductSpecs";
+import AddToCartButton from "@/components/AddToCartButton"; // Nếu bạn đã có file này thì bỏ comment
 
 // TẠM THỜI ẨN CÁC FILE CHƯA CÓ ĐỂ TRÁNH LỖI WEB
-// import Breadcrumb from "@/components/Breadcrumb";
-// import AddToCartButton from "@/components/AddToCartButton";
 // import RelatedProducts from "@/components/RelatedProducts";
 // import ProductReviews from "@/components/ProductReviews";
 
@@ -38,46 +37,54 @@ export default async function ProductDetail(props: {
     );
   }
 
-  // --- MỚI: XỬ LÝ LOGIC ALBUM ẢNH (6 HÌNH) ---
+  // --- XỬ LÝ LOGIC ALBUM ẢNH (QUAN TRỌNG) ---
   let productImages: string[] = [];
-  try {
-    // 1. Thử giải mã chuỗi JSON (ví dụ: '["url1", "url2"]')
-    const parsed = JSON.parse(product.img);
 
-    // 2. Kiểm tra xem có phải là mảng không
-    if (Array.isArray(parsed)) {
-      productImages = parsed;
-    } else {
-      // Nếu không phải mảng (hiếm), coi như là 1 ảnh
+  if (product.img) {
+    try {
+      // Kiểm tra xem có phải định dạng JSON mảng không (bắt đầu bằng [ )
+      if (product.img.trim().startsWith("[")) {
+        const parsed = JSON.parse(product.img);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          productImages = parsed;
+        } else {
+          productImages = [product.img];
+        }
+      } else {
+        // Nếu là link thường (dữ liệu cũ)
+        productImages = [product.img];
+      }
+    } catch (e) {
+      // Nếu lỗi parse, coi như là link thường
       productImages = [product.img];
     }
-  } catch (e) {
-    // 3. Nếu lỗi (do là dữ liệu cũ dạng link đơn), thì ép thành mảng 1 phần tử
-    productImages = product.img ? [product.img] : [];
+  } else {
+    // Nếu không có ảnh, dùng ảnh placeholder
+    productImages = ["https://via.placeholder.com/500?text=No+Image"];
   }
   // ---------------------------------------------
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans pb-10 pt-6">
       <div className="container mx-auto px-4">
-        {/* Breadcrumb tạm thời viết cứng */}
+        {/* Breadcrumb */}
         <div className="text-sm text-gray-500 mb-4">
           <Link href="/" className="hover:text-blue-600">
             Trang chủ
           </Link>{" "}
-          / {product.category} /{" "}
-          <span className="text-gray-800 font-medium">{product.title}</span>
+          / <span className="text-gray-600">{product.category}</span> /{" "}
+          <span className="text-gray-800 font-medium truncate">
+            {product.title}
+          </span>
         </div>
 
         {/* --- KHỐI THÔNG TIN CHÍNH --- */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row mt-4 p-6 gap-8">
-          {/* CỘT TRÁI: ẢNH (ĐÃ ĐƯỢC NÂNG CẤP ALBUM) */}
+          {/* CỘT TRÁI: ẢNH (ĐÃ FIX LOGIC) */}
           <div className="md:w-5/12">
             <ProductGallery
-              // Ảnh chính là ảnh đầu tiên trong mảng (nếu có)
-              mainImage={productImages.length > 0 ? productImages[0] : ""}
-              // Truyền toàn bộ danh sách ảnh vào gallery
-              gallery={productImages}
+              mainImage={productImages[0]} // Ảnh đầu tiên
+              gallery={productImages.slice(1)}
             />
           </div>
 
@@ -93,7 +100,6 @@ export default async function ProductDetail(props: {
                 </span>
               </div>
 
-              {/* SỬA: Đổi product.name thành product.title */}
               <h1 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight">
                 {product.title || product.name}
               </h1>
@@ -106,19 +112,26 @@ export default async function ProductDetail(props: {
                 <div className="text-gray-600">
                   Đã bán <span className="font-bold text-black">100+</span>
                 </div>
+                {product.expiry && (
+                  <>
+                    <div className="text-gray-400">|</div>
+                    <div className="text-green-600 font-medium">
+                      HSD: {product.expiry}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
             <div className="bg-gray-50 p-4 rounded-lg mb-6">
               <div className="flex items-end gap-3">
                 <span className="text-3xl md:text-4xl font-bold text-blue-700">
-                  {product.price}
+                  {Number(product.price).toLocaleString("vi-VN")}đ
                 </span>
 
-                {/* SỬA: Đổi original_price thành old_price */}
                 {product.old_price && (
                   <span className="text-gray-400 text-lg line-through mb-1">
-                    {product.old_price}
+                    {Number(product.old_price).toLocaleString("vi-VN")}đ
                   </span>
                 )}
 
@@ -129,15 +142,16 @@ export default async function ProductDetail(props: {
                 )}
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Giá đã bao gồm thuế (nếu có){" "}
-                {product.unit ? `/ ${product.unit}` : ""}
+                Giá đã bao gồm thuế (nếu có)
+                {product.unit ? ` / ${product.unit}` : ""}
               </p>
             </div>
 
-            <div className="mb-6 space-y-3">
+            {/* Thông tin tóm tắt */}
+            <div className="mb-6 space-y-3 text-sm">
               {product.specification && (
                 <div className="flex">
-                  <span className="w-32 text-gray-500 font-medium">
+                  <span className="w-32 text-gray-500 font-medium flex-shrink-0">
                     Quy cách:
                   </span>
                   <span className="text-gray-800 font-medium">
@@ -147,33 +161,29 @@ export default async function ProductDetail(props: {
               )}
               {product.origin && (
                 <div className="flex">
-                  <span className="w-32 text-gray-500 font-medium">
+                  <span className="w-32 text-gray-500 font-medium flex-shrink-0">
                     Xuất xứ:
                   </span>
                   <span className="text-gray-800">{product.origin}</span>
                 </div>
               )}
-              <div className="flex">
-                <span className="w-32 text-gray-500 font-medium">
-                  Mô tả nhanh:
-                </span>
-                <span className="text-gray-600 flex-1">
-                  Sản phẩm chính hãng, hỗ trợ điều trị hiệu quả, được dược sĩ
-                  khuyên dùng.
-                </span>
-              </div>
+              {product.manufacturer && (
+                <div className="flex">
+                  <span className="w-32 text-gray-500 font-medium flex-shrink-0">
+                    Nhà sản xuất:
+                  </span>
+                  <span className="text-gray-800">{product.manufacturer}</span>
+                </div>
+              )}
             </div>
 
-            <div className="mt-auto flex gap-4">
-              {/* Thay AddToCartButton bằng nút HTML thường để không lỗi */}
-              <button className="flex-1 border-2 border-blue-600 text-blue-600 font-bold py-3 rounded-lg hover:bg-blue-50">
-                Thêm vào giỏ
-              </button>
-              <button className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-lg">
-                Mua ngay
-              </button>
+            {/* Nút mua hàng */}
+            {/* Sử dụng component Client nếu có để xử lý logic thêm vào giỏ */}
+            <div className="mt-auto">
+              <AddToCartButton product={product} />
             </div>
 
+            {/* Cam kết */}
             <div className="grid grid-cols-3 gap-2 mt-6 border-t pt-4 text-xs text-gray-500 text-center">
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xl">✅</span> 100% Chính hãng
@@ -188,19 +198,25 @@ export default async function ProductDetail(props: {
           </div>
         </div>
 
-        {/* --- MÔ TẢ SẢN PHẨM --- */}
+        {/* --- [MỚI] BẢNG THÔNG SỐ KỸ THUẬT & THÀNH PHẦN --- */}
+        {/* Component này giúp hiển thị các thông tin bạn vừa nhập trong admin */}
+        <div className="mt-6">
+          <ProductSpecs product={product} />
+        </div>
+
+        {/* --- MÔ TẢ CHI TIẾT SẢN PHẨM --- */}
         {product.description && (
-          <div className="mt-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="mt-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 className="text-xl font-bold text-gray-800 mb-4 border-l-4 border-blue-600 pl-3">
               Mô tả sản phẩm
             </h2>
             <div
               className="text-gray-700 leading-relaxed prose max-w-none"
               dangerouslySetInnerHTML={{
-                __html: product.description, // SỬA: Đổi từ description_html sang description
+                __html: product.description,
               }}
             />
-            {/* Fallback nếu không có HTML */}
+            {/* Fallback nếu không có HTML (text thường) */}
             {!product.description.includes("<") && (
               <p className="text-gray-600 whitespace-pre-line mt-2">
                 {product.description}
@@ -208,10 +224,6 @@ export default async function ProductDetail(props: {
             )}
           </div>
         )}
-
-        {/* Ẩn các phần chưa có component */}
-        {/* <ProductReviews /> */}
-        {/* <RelatedProducts category={product.category} currentId={product.id} /> */}
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-// 1. Import hook useCart
 import { useCart } from "@/context/CartContext";
 
 interface ProductProps {
@@ -31,10 +30,9 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-4 flex flex-col h-full relative group">
-      {/* ... (Phần hiển thị ảnh và tên giữ nguyên như cũ) ... */}
-      <Link href={`/products/${product.id}`} className="block mb-3">
-        {/* Code ảnh giữ nguyên */}
-        <div className="w-full aspect-square flex items-center justify-center overflow-hidden rounded-lg">
+      {/* --- SỬA LẠI LINK: đổi 'products' thành 'product' --- */}
+      <Link href={`/product/${product.id}`} className="block mb-3">
+        <div className="w-full aspect-square flex items-center justify-center overflow-hidden rounded-lg cursor-pointer">
           <img
             src={getThumbnail(product.img)}
             alt={product.title}
@@ -43,16 +41,16 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
         </div>
       </Link>
 
-      <Link href={`/products/${product.id}`} className="block mb-2">
+      {/* --- SỬA LẠI LINK: đổi 'products' thành 'product' --- */}
+      <Link href={`/product/${product.id}`} className="block mb-2">
         <h3
-          className="text-gray-900 font-semibold text-sm leading-tight line-clamp-2 min-h-[40px]"
+          className="text-gray-900 font-semibold text-sm leading-tight line-clamp-2 min-h-[40px] hover:text-blue-600 transition-colors cursor-pointer"
           title={product.title}
         >
           {product.title}
         </h3>
       </Link>
 
-      {/* Code giá giữ nguyên */}
       <div className="flex items-end gap-1 mb-2">
         <span className="text-blue-600 font-bold text-lg">
           {Number(product.price).toLocaleString("vi-VN")}đ
@@ -74,7 +72,6 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
         )}
       </div>
 
-      {/* 3. SỬA NÚT MUA TẠI ĐÂY */}
       <button
         className="mt-auto w-full bg-blue-600 text-white font-bold py-2.5 rounded-full hover:bg-blue-700 transition-colors text-sm"
         // Gọi hàm thêm thật
