@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
 // --- QUAN TRỌNG: KHAI BÁO EMAIL CỦA BẠN Ở ĐÂY ---
-const ADMIN_EMAIL = "admin@gmail.com";
+const ADMIN_EMAIL = "admin@thienhau.com";
 // -----------------------------------------------
 
 export default function LoginPage() {
