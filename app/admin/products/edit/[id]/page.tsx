@@ -45,6 +45,7 @@ export default function EditProductPage({
     manufacturer: "",
     ingredients: "",
     expiry: "",
+    is_best_seller: false, // <--- ĐÃ SỬA: Khớp tên cột trong DB
   });
 
   // --- [QUAN TRỌNG] STATE QUẢN LÝ DANH SÁCH ẢNH (Mảng) ---
@@ -83,13 +84,13 @@ export default function EditProductPage({
             if (Array.isArray(parsed)) {
               loadedImages = parsed;
             } else {
-              loadedImages = [data.img]; // Nếu cũ lưu dạng string thì nhét vào mảng
+              loadedImages = [data.img];
             }
           } catch {
             loadedImages = [data.img];
           }
         }
-        setImages(loadedImages); // Lưu vào state
+        setImages(loadedImages);
 
         // Đổ dữ liệu vào Form
         setFormData({
@@ -108,6 +109,7 @@ export default function EditProductPage({
           manufacturer: data.manufacturer || "",
           ingredients: data.ingredients || "",
           expiry: data.expiry || "",
+          is_best_seller: data.is_best_seller || false, // <--- ĐÃ SỬA: Lấy từ cột is_best_seller
         });
 
         // Load danh mục con
@@ -179,19 +181,17 @@ export default function EditProductPage({
     });
   };
 
-  // --- [MỚI] HÀM XỬ LÝ NHIỀU ẢNH ---
+  // --- HÀM XỬ LÝ NHIỀU ẢNH ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Kiểm tra số lượng
     if (images.length + files.length > 6) {
       alert("Chỉ được đăng tối đa 6 ảnh!");
       return;
     }
 
     const newImages: string[] = [];
-    // Lặp qua từng file để convert sang Base64
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const base64 = await new Promise<string>((resolve) => {
@@ -202,11 +202,9 @@ export default function EditProductPage({
       newImages.push(base64);
     }
 
-    // Gộp ảnh cũ + ảnh mới
     setImages((prev) => [...prev, ...newImages]);
   };
 
-  // Hàm xóa ảnh khỏi danh sách
   const removeImage = (indexToRemove: number) => {
     setImages((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
@@ -219,13 +217,12 @@ export default function EditProductPage({
 
     try {
       const subCategoryString = formData.sub_category.join(", ");
-
-      // Đóng gói mảng ảnh thành chuỗi JSON
       const imgJsonString = JSON.stringify(images);
 
+      // Payload bây giờ sẽ chứa key 'is_best_seller' khớp với DB
       const payload = {
         ...formData,
-        img: imgJsonString, // Lưu toàn bộ mảng ảnh
+        img: imgJsonString,
         sub_category: subCategoryString,
       };
 
@@ -280,13 +277,32 @@ export default function EditProductPage({
             />
           </div>
 
-          {/* --- [MỚI] KHU VỰC QUẢN LÝ NHIỀU ẢNH --- */}
+          {/* --- CHECKBOX BÁN CHẠY (ĐÃ SỬA) --- */}
+          <div className="flex items-center p-3 bg-red-50 border border-red-100 rounded-lg">
+            <input
+              id="bestseller-check"
+              type="checkbox"
+              className="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded cursor-pointer"
+              checked={formData.is_best_seller} // ĐÃ SỬA
+              onChange={
+                (e) =>
+                  setFormData({ ...formData, is_best_seller: e.target.checked }) // ĐÃ SỬA
+              }
+            />
+            <label
+              htmlFor="bestseller-check"
+              className="ml-3 text-red-700 font-bold cursor-pointer select-none"
+            >
+              🔥 Đánh dấu là sản phẩm bán chạy (Best Seller)
+            </label>
+          </div>
+
+          {/* --- KHU VỰC QUẢN LÝ NHIỀU ẢNH --- */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
               Hình ảnh sản phẩm ({images.length}/6)
             </label>
 
-            {/* Lưới hiển thị ảnh */}
             <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-4">
               {images.map((imgSrc, index) => (
                 <div
@@ -298,7 +314,6 @@ export default function EditProductPage({
                     alt={`Ảnh ${index}`}
                     className="w-full h-full object-cover"
                   />
-                  {/* Nút xóa ảnh */}
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
@@ -309,7 +324,6 @@ export default function EditProductPage({
                 </div>
               ))}
 
-              {/* Ô bấm thêm ảnh (Chỉ hiện khi chưa đủ 6 ảnh) */}
               {images.length < 6 && (
                 <label className="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 h-24 text-gray-400">
                   <span className="text-2xl">+</span>
