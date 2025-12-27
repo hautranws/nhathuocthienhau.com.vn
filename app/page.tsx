@@ -9,8 +9,11 @@ import BestSellerSection from "@/components/BestSellerSection";
 
 export default async function Home() {
   // 1. Lấy tất cả sản phẩm (Code cũ)
-  const { data: products, error } = await supabase.from("products").select("*");
-
+const { data: products, error } = await supabase
+    .from("products")
+    .select("id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price") 
+    .order("id", { ascending: false }) // Lấy sản phẩm mới nhất
+    .limit(20);
   // --- [MỚI] BƯỚC 2: THÊM LOGIC LẤY SẢN PHẨM BÁN CHẠY ---
   const { data: bestSellers } = await supabase
     .from("products")
