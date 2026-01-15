@@ -1,49 +1,72 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Banner() {
-  // Danh sách ảnh quảng cáo (Tạm thời dùng ảnh mẫu, sau này bạn thay link ảnh thật vào)
-  const slides = [
+  // Ảnh mặc định (dùng khi chưa load được data hoặc DB trống)
+  const defaultSlides = [
     {
       id: 1,
-      url: "https://img.freepik.com/free-vector/flat-medical-facebook-cover-template_23-2149098492.jpg?w=1380&t=st=1701915000~exp=1701915600~hmac=fake",
-      alt: "Khuyến mãi 1",
+      image_url:
+        "https://cdn.nhathuoclongchau.com.vn/unsafe/828x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/Banner_Web_PC_1610x492_6_28c0397556.png",
     },
     {
       id: 2,
-      url: "https://img.freepik.com/free-vector/flat-medical-webinar-template_23-2149630335.jpg?w=1380",
-      alt: "Khuyến mãi 2",
+      image_url:
+        "https://cdn.nhathuoclongchau.com.vn/unsafe/828x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/Banner_Web_PC_1610x492_5_e890397556.png",
     },
     {
       id: 3,
-      url: "https://img.freepik.com/free-vector/pharmacy-online-banner-template_23-2148564070.jpg?w=1380",
-      alt: "Khuyến mãi 3",
+      image_url:
+        "https://cdn.nhathuoclongchau.com.vn/unsafe/828x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/Banner_Web_PC_1610x492_4_d890397556.png",
     },
   ];
 
+  const [slides, setSlides] = useState<any[]>(defaultSlides);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Tự động chuyển ảnh sau mỗi 3 giây
+  // --- 1. LẤY DỮ LIỆU TỪ SUPABASE ---
   useEffect(() => {
+    const fetchBanners = async () => {
+      const { data, error } = await supabase
+        .from("banners")
+        .select("*")
+        .eq("active", true) // Chỉ lấy banner đang bật
+        .order("created_at", { ascending: false }); // Lấy mới nhất trước
+
+      if (!error && data && data.length > 0) {
+        setSlides(data);
+      }
+    };
+
+    fetchBanners();
+  }, []);
+
+  // --- 2. TỰ ĐỘNG CHUYỂN SLIDE ---
+  useEffect(() => {
+    if (slides.length === 0) return;
+
     const timer = setInterval(() => {
       setCurrentIndex((prevIndex) =>
         prevIndex === slides.length - 1 ? 0 : prevIndex + 1
       );
-    }, 3000); // 3000ms = 3 giây
+    }, 4000); // 4 giây chuyển 1 lần
 
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]); // Chạy lại khi danh sách slide thay đổi
+
+  if (slides.length === 0) return null;
 
   return (
-    <div className="w-full h-64 md:h-96 relative overflow-hidden rounded-xl shadow-lg group">
+    <div className="w-full h-48 md:h-[400px] relative overflow-hidden rounded-xl shadow-lg group">
       {/* Hiển thị ảnh */}
       <div
-        className="w-full h-full bg-center bg-cover duration-500 transition-all ease-in-out"
-        style={{ backgroundImage: `url(${slides[currentIndex].url})` }}
+        className="w-full h-full bg-center bg-cover duration-700 transition-all ease-in-out"
+        style={{ backgroundImage: `url(${slides[currentIndex].image_url})` }}
       ></div>
 
-      {/* Nút lùi (Mũi tên trái) - Chỉ hiện khi di chuột vào */}
-      <div className="hidden group-hover:block absolute top-[50%] -translate-x-0 translate-y-[-50%] left-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer hover:bg-black/50">
+      {/* Nút lùi (Mũi tên trái) */}
+      <div className="hidden group-hover:block absolute top-[50%] -translate-y-1/2 left-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer hover:bg-black/50 transition">
         <button
           onClick={() =>
             setCurrentIndex(
@@ -56,7 +79,7 @@ export default function Banner() {
       </div>
 
       {/* Nút tiến (Mũi tên phải) */}
-      <div className="hidden group-hover:block absolute top-[50%] -translate-x-0 translate-y-[-50%] right-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer hover:bg-black/50">
+      <div className="hidden group-hover:block absolute top-[50%] -translate-y-1/2 right-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer hover:bg-black/50 transition">
         <button
           onClick={() =>
             setCurrentIndex(
@@ -72,10 +95,12 @@ export default function Banner() {
       <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
         {slides.map((slide, index) => (
           <div
-            key={slide.id}
+            key={slide.id || index}
             onClick={() => setCurrentIndex(index)}
-            className={`transition-all w-3 h-3 rounded-full cursor-pointer ${
-              currentIndex === index ? "bg-white scale-125" : "bg-white/50"
+            className={`transition-all w-2 h-2 md:w-3 md:h-3 rounded-full cursor-pointer shadow-sm ${
+              currentIndex === index
+                ? "bg-white scale-125"
+                : "bg-white/50 hover:bg-white/80"
             }`}
           ></div>
         ))}

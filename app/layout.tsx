@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+// Import CartProvider (Đảm bảo file này có "use client" ở đầu)
 import { CartProvider } from "@/context/CartContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -19,8 +20,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      {/* THÊM suppressHydrationWarning={true} VÀO DÒNG DƯỚI ĐÂY */}
       <body className={inter.className} suppressHydrationWarning={true}>
+        {/* CartProvider phải bọc toàn bộ nội dung bên trong Body */}
         <CartProvider>
           <Header />
           {children}

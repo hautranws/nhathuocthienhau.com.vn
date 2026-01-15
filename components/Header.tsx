@@ -1,4 +1,3 @@
-// components/Header.tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -7,17 +6,12 @@ import { supabase } from "@/lib/supabaseClient";
 
 // Import Component con
 import { Icons } from "./icons";
-import { GridItem, SmallItem, ProductCard } from "./sub-components";
+import { GridItem, SmallItem } from "./sub-components";
 import SearchBar from "./header/SearchBar";
-import {
-  NAV_ITEMS,
-  // THUOC_SIDEBAR, // <-- KHÔNG CẦN DÙNG CÁI NÀY NỮA
-  // THUOC_GRID,    // <-- KHÔNG CẦN DÙNG CÁI NÀY NỮA
-  BENH_SIDEBAR,
-} from "./header/constants";
+import { NAV_ITEMS, BENH_SIDEBAR } from "./header/constants";
 
-// --- [MỚI] IMPORT DATA THUỐC ---
-import { THUOC_DATA } from "@/components/data"; 
+// Import Data Thuốc để lấy ví dụ hiển thị
+import { THUOC_DATA } from "@/components/data";
 
 export default function Header() {
   const { totalItems } = useCart();
@@ -42,7 +36,6 @@ export default function Header() {
     window.location.reload();
   };
 
-  // --- HÀM HELPER: Render nội dung cột phải ---
   const renderDynamicContent = (
     dataConfig: any,
     itemLabel: string,
@@ -65,11 +58,8 @@ export default function Header() {
       );
     }
 
-    // --- LOGIC MỚI: Xử lý nút "Xem thêm" ---
-    const MAX_DISPLAY = 6; // Chỉ hiện tối đa 6 mục
+    const MAX_DISPLAY = 6;
     const shouldShowMore = activeData.items.length > MAX_DISPLAY;
-
-    // Nếu dài hơn thì cắt lấy đầu, ngược lại lấy hết
     const displayItems = shouldShowMore
       ? activeData.items.slice(0, MAX_DISPLAY)
       : activeData.items;
@@ -92,7 +82,6 @@ export default function Header() {
             activeData.type === "small" ? "grid-cols-3" : "grid-cols-2"
           } gap-4 mb-8`}
         >
-          {/* Render các mục (Đã được cắt gọn nếu dài) */}
           {displayItems.map((item: any, idx: number) =>
             activeData.type === "small" ? (
               <SmallItem
@@ -113,7 +102,6 @@ export default function Header() {
             )
           )}
 
-          {/* --- NÚT XEM THÊM --- */}
           {shouldShowMore && (
             <Link
               href={`/category/${itemLabel}?group=${groupKey}`}
@@ -138,7 +126,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-blue-700 text-white shadow-md sticky top-0 z-50 font-sans">
+    <header className="bg-white text-gray-800 shadow-md sticky top-0 z-50 font-sans border-b border-gray-200">
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -148,11 +136,11 @@ export default function Header() {
         }}
       />
 
-      {/* --- TẦNG 1: LOGO & TÌM KIẾM --- */}
-      <div className="container mx-auto px-4 py-10 flex flex-wrap justify-between items-center gap-4 relative z-50 bg-blue-700">
+      {/* --- TẦNG 1: LOGO & TÌM KIẾM (Nền trắng) --- */}
+      <div className="container mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4 relative z-50 bg-white">
         <button
           onClick={toggleMenu}
-          className="md:hidden text-2xl p-2 focus:outline-none"
+          className="md:hidden text-2xl p-2 focus:outline-none text-blue-700"
         >
           {isMobileMenuOpen ? "✕" : "☰"}
         </button>
@@ -160,37 +148,29 @@ export default function Header() {
         {/* LOGO */}
         <div className="flex-none flex items-center mr-4">
           <Link href="/" className="flex items-center gap-3 cursor-pointer">
-            <div className="bg-white text-blue-700 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl shadow-md border-2 border-blue-200">
-              💊
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-bold text-yellow-400 uppercase tracking-wide">
-                Hệ thống chính hãng
-              </span>
-              <div className="flex flex-col -mt-1">
-                <span className="text-xl md:text-2xl font-black tracking-tighter uppercase text-white">
-                  NHÀ THUỐC
-                </span>
-                <span className="text-xl md:text-2xl font-black tracking-tighter uppercase text-white leading-none">
-                  THIÊN HẬU
-                </span>
-              </div>
-            </div>
+             <img 
+                src="/logo-thien-hau.png" 
+                alt="Nhà Thuốc Thiên Hậu" 
+                className="h-28 md:h-44 w-auto object-contain p-2"
+             />
           </Link>
         </div>
 
-        {/* COMPONENT TÌM KIẾM */}
-        <SearchBar />
+        {/* SEARCH BAR */}
+        <div className="flex-1 max-w-2xl">
+            <SearchBar />
+        </div>
 
+        {/* USER INFO & CART */}
         <div className="flex items-center gap-6">
           {user ? (
             <div className="flex flex-col items-end text-xs">
-              <span className="font-bold text-yellow-300">
+              <span className="font-bold text-blue-800">
                 Chào, {user.email?.split("@")[0]}
               </span>
               <button
                 onClick={handleLogout}
-                className="text-white hover:underline opacity-80"
+                className="text-gray-500 hover:text-red-600 hover:underline opacity-80"
               >
                 Đăng xuất
               </button>
@@ -198,20 +178,21 @@ export default function Header() {
           ) : (
             <Link
               href="/login"
-              className="flex flex-col items-center text-xs cursor-pointer hover:opacity-80"
+              className="flex flex-col items-center text-xs cursor-pointer hover:opacity-80 text-gray-600"
             >
-              <span className="text-lg">👤</span>
+              <span className="text-2xl text-blue-700">👤</span>
               <span>Đăng nhập</span>
             </Link>
           )}
+          
           <Link
             href="/checkout"
-            className="flex items-center gap-2 bg-blue-800 px-3 py-2 rounded-full hover:bg-blue-900 transition relative shadow-md"
+            className="flex items-center gap-2 bg-blue-700 text-white px-4 py-3 rounded-full hover:bg-blue-800 transition relative shadow-lg hover:shadow-xl"
           >
             <span className="text-xl">🛒</span>
             <span className="font-bold hidden md:block">Giỏ hàng</span>
             {totalItems > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center border-2 border-white">
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                 {totalItems}
               </span>
             )}
@@ -219,35 +200,32 @@ export default function Header() {
         </div>
       </div>
 
-      {/* --- TẦNG 2: MEGA MENU --- */}
-      <div className="hidden md:block bg-white border-b border-gray-200 relative">
+      {/* --- TẦNG 2: MEGA MENU (SỬA THÀNH NỀN XANH ĐẬM) --- */}
+      <div className="hidden md:block bg-blue-800 border-t border-blue-900 relative shadow-sm">
         <div className="container mx-auto">
-          <ul className="flex justify-center gap-6 text-sm font-bold text-gray-800 px-4">
+          {/* Sửa text-gray-700 thành text-white */}
+          <ul className="flex justify-center gap-8 text-sm font-bold text-white px-4">
             {NAV_ITEMS.map((item) => (
               <li
                 key={item.id}
-                className="group py-3 cursor-pointer hover:text-blue-700 flex items-center gap-1 static"
+                // Sửa hover:text-blue-700 thành hover:text-yellow-300 để nổi bật trên nền xanh
+                className="group py-4 cursor-pointer hover:text-yellow-300 flex items-center gap-1 static border-b-2 border-transparent hover:border-yellow-300 transition-all"
                 onMouseEnter={() => {
-                  // Nếu là Thuốc thì set mặc định tab đầu tiên của Thuốc
-                  if (item.label === "Thuốc" && THUOC_DATA["NhomTriLieu"]?.items[0]) {
-                    setActiveMegaTab(THUOC_DATA["NhomTriLieu"].items[0].sub);
+                  if (item.label === "Thuốc") {
+                    setActiveMegaTab("tra-cuu-thuoc");
                   } else if (item.defaultTab) {
                     setActiveMegaTab(item.defaultTab);
                   }
                 }}
               >
-                <Link href={item.href}>{item.label}</Link>{" "}
-                <span className="text-xs">▼</span>
+                <Link href={item.href} className="uppercase tracking-wide">{item.label}</Link>{" "}
+                <span className="text-[10px] opacity-70">▼</span>
                 
-                {/* --- DROPDOWN PANEL --- */}
-                <div className="absolute top-full left-0 w-full bg-white text-gray-800 shadow-2xl rounded-b-lg border-t border-gray-200 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 z-40 origin-top text-left">
+                {/* --- DROPDOWN PANEL (GIỮ NGUYÊN NỀN TRẮNG CHỮ ĐEN) --- */}
+                <div className="absolute top-full left-0 w-full bg-white text-gray-800 shadow-2xl rounded-b-xl border-t border-gray-100 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 z-40 origin-top text-left mt-[1px]">
                   <div className="container mx-auto flex h-[500px]">
-                    
-                    {/* --- SIDEBAR TRÁI --- */}
                     <div className="w-1/4 bg-gray-50 p-2 overflow-y-auto border-r custom-scrollbar">
                       <ul className="space-y-1">
-                        
-                        {/* CASE 1: Dynamic cho TPCN, Dược mỹ phẩm... */}
                         {item.type === "dynamic" &&
                           item.data &&
                           Object.keys(item.data).map((key) => (
@@ -256,7 +234,7 @@ export default function Header() {
                               onMouseEnter={() => setActiveMegaTab(key)}
                               className={`px-4 py-3 font-bold rounded cursor-pointer flex justify-between items-center transition ${
                                 activeMegaTab === key
-                                  ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600"
+                                  ? "bg-white text-blue-700 border-l-4 border-blue-600 shadow-sm"
                                   : "hover:bg-white text-gray-600 hover:text-blue-700"
                               }`}
                             >
@@ -275,30 +253,65 @@ export default function Header() {
                             </li>
                           ))}
 
-                        {/* CASE 2: [ĐÃ SỬA] Menu Thuốc - Lấy từ THUOC_DATA */}
-                        {item.label === "Thuốc" && THUOC_DATA["NhomTriLieu"]?.items.map((subItem: any) => (
+                        {item.label === "Thuốc" && (
+                          <>
                             <li
-                              key={subItem.sub}
-                              onMouseEnter={() => setActiveMegaTab(subItem.sub)}
+                              onMouseEnter={() =>
+                                setActiveMegaTab("tra-cuu-thuoc")
+                              }
                               className={`px-4 py-3 font-bold rounded cursor-pointer flex justify-between items-center transition ${
-                                activeMegaTab === subItem.sub
-                                  ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600"
+                                activeMegaTab === "tra-cuu-thuoc"
+                                  ? "bg-white text-blue-700 border-l-4 border-blue-600 shadow-sm"
                                   : "hover:bg-white text-gray-600 hover:text-blue-700"
                               }`}
                             >
-                              <Link
-                                // Link vào Cấp 3: ?group=NhomTriLieu&sub=ThuocDiUng
-                                href={`/category/Thuốc?group=NhomTriLieu&sub=${subItem.sub}`}
-                                className="flex items-center gap-2 w-full"
-                              >
-                                <span className="text-xl">{subItem.sticker || "💊"}</span> 
-                                <span className="line-clamp-1">{subItem.title}</span>
-                              </Link>
+                              <div className="flex items-center gap-2 w-full">
+                                <span className="text-xl text-blue-500">
+                                  💊
+                                </span>{" "}
+                                Tra cứu thuốc
+                              </div>
                               <span className="text-xs">›</span>
                             </li>
-                          ))}
+                            <li
+                              onMouseEnter={() =>
+                                setActiveMegaTab("tra-cuu-duoc-chat")
+                              }
+                              className={`px-4 py-3 font-bold rounded cursor-pointer flex justify-between items-center transition ${
+                                activeMegaTab === "tra-cuu-duoc-chat"
+                                  ? "bg-white text-blue-700 border-l-4 border-blue-600 shadow-sm"
+                                  : "hover:bg-white text-gray-600 hover:text-blue-700"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 w-full">
+                                <span className="text-xl text-purple-500">
+                                  🧪
+                                </span>{" "}
+                                Tra cứu dược chất
+                              </div>
+                              <span className="text-xs">›</span>
+                            </li>
+                            <li
+                              onMouseEnter={() =>
+                                setActiveMegaTab("tra-cuu-duoc-lieu")
+                              }
+                              className={`px-4 py-3 font-bold rounded cursor-pointer flex justify-between items-center transition ${
+                                activeMegaTab === "tra-cuu-duoc-lieu"
+                                  ? "bg-white text-blue-700 border-l-4 border-blue-600 shadow-sm"
+                                  : "hover:bg-white text-gray-600 hover:text-blue-700"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 w-full">
+                                <span className="text-xl text-green-500">
+                                  🌿
+                                </span>{" "}
+                                Tra cứu dược liệu
+                              </div>
+                              <span className="text-xs">›</span>
+                            </li>
+                          </>
+                        )}
 
-                        {/* CASE 3: Menu Bệnh */}
                         {item.type === "custom_benh" && (
                           <>
                             <li className="px-4 py-3 bg-blue-50 text-blue-700 font-bold rounded shadow-sm cursor-pointer flex justify-between items-center border-l-4 border-blue-600">
@@ -329,10 +342,7 @@ export default function Header() {
                       </ul>
                     </div>
 
-                    {/* --- CONTENT PHẢI --- */}
                     <div className="w-3/4 p-6 overflow-y-auto bg-white custom-scrollbar">
-                      
-                      {/* Render nội dung cho TPCN, DMP */}
                       {item.type === "dynamic" &&
                         renderDynamicContent(
                           item.data,
@@ -340,80 +350,197 @@ export default function Header() {
                           activeMegaTab
                         )}
 
-                      {/* [ĐÃ SỬA] Content Thuốc - Hiện lưới danh mục con (Level 4) */}
-                      {item.label === "Thuốc" && (() => {
-                          // Tìm mục thuốc đang active trong danh sách NhomTriLieu
-                          const activeThuoc = THUOC_DATA["NhomTriLieu"]?.items.find((i: any) => i.sub === activeMegaTab);
-                          
-                          if (!activeThuoc || !activeThuoc.children) {
-                              return (
-                                <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                                    <div className="text-4xl mb-2">💊</div>
-                                    <p>Chọn một nhóm thuốc để xem chi tiết</p>
-                                </div>
-                              );
-                          }
-
-                          return (
-                            <div className="animate-fade-in">
-                                <div className="flex items-center gap-2 mb-6 pb-2 border-b">
-                                    <span className="text-2xl">{activeThuoc.sticker}</span>
-                                    <h3 className="text-xl font-bold text-gray-800">{activeThuoc.title}</h3>
-                                </div>
-                                {/* Lưới danh mục con (Level 4) */}
-                                <div className="grid grid-cols-3 gap-4">
-                                    {activeThuoc.children.map((child: any, idx: number) => (
-                                        <GridItem
-                                            key={idx}
-                                            // Link vào Cấp 4: ?group=...&sub=...&child=...
-                                            href={`/category/Thuốc?group=NhomTriLieu&sub=${activeThuoc.sub}&child=${child.sub}`}
-                                            sticker={child.sticker}
-                                            title={child.title}
-                                            count={child.count}
-                                        />
+                      {item.label === "Thuốc" && (
+                        <div className="animate-fade-in h-full flex flex-col">
+                          {activeMegaTab === "tra-cuu-thuoc" && (
+                            <>
+                              <div className="flex items-center gap-2 mb-6 pb-2 border-b">
+                                <span className="text-2xl">💊</span>
+                                <h3 className="text-xl font-bold text-gray-800">
+                                  Thuốc thông dụng
+                                </h3>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 mb-6">
+                                <GridItem
+                                  href="/category/Thuốc?group=NhomTriLieu&sub=ThuocKhangSinh"
+                                  sticker="💊"
+                                  title="Thuốc kháng sinh, kháng nấm"
+                                  count="Đa dạng"
+                                />
+                                <GridItem
+                                  href="/category/Thuốc?group=NhomTriLieu&sub=ThuocTimMach"
+                                  sticker="❤️"
+                                  title="Thuốc tim mạch & máu"
+                                  count="Phổ biến"
+                                />
+                                <GridItem
+                                  href="/category/Thuốc?group=NhomTriLieu&sub=ThuocThanKinh"
+                                  sticker="🧠"
+                                  title="Thuốc thần kinh"
+                                  count="Chuyên khoa"
+                                />
+                                <GridItem
+                                  href="/category/Thuốc?group=NhomTriLieu&sub=ThuocTieuHoa"
+                                  sticker="🌭"
+                                  title="Thuốc tiêu hoá & gan mật"
+                                  count="Thông dụng"
+                                />
+                              </div>
+                              <div className="mb-6">
+                                <Link
+                                  href="/tra-cuu-thuoc"
+                                  className="text-blue-600 font-bold hover:underline flex items-center gap-1"
+                                >
+                                  Xem tất cả <span className="text-xs">›</span>
+                                </Link>
+                              </div>
+                              <div className="mt-auto">
+                                <p className="font-bold text-gray-800 mb-2">
+                                  Xem theo chữ cái
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                    .split("")
+                                    .map((char) => (
+                                      <Link
+                                        key={char}
+                                        href={`/tra-cuu-thuoc?alpha=${char}`}
+                                        className="w-8 h-8 flex items-center justify-center bg-gray-50 border border-gray-200 rounded hover:bg-blue-600 hover:text-white hover:border-blue-600 transition text-sm font-semibold text-gray-600"
+                                      >
+                                        {char}
+                                      </Link>
                                     ))}
                                 </div>
-                            </div>
-                          );
-                      })()}
-
-                      {/* Banner / Sản phẩm bán chạy (Chung cho TPCN, DMP) */}
-                      {["TPCN", "DMP"].includes(item.id) && (
-                        <div className="mt-8 border-t pt-4">
-                          <div className="flex justify-between items-center mb-4 border-l-4 border-blue-600 pl-3">
-                            <h4 className="font-bold text-gray-800 text-lg">
-                              Bán chạy nhất
-                            </h4>
-                            <span className="text-blue-600 text-sm cursor-pointer hover:underline">
-                              Xem tất cả ›
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-4 gap-4">
-                            <ProductCard
-                              title="Viên uống Immuvita Easylife"
-                              price="390.000đ"
-                              img="https://cdn.nhathuoclongchau.com.vn/unsafe/375x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/00021873_vien-uong-immuvita-easylife-bo-phe-ho-tro-giam-ho-30-vien-7313-61fa_large_cc87c933ea.jpg"
-                            />
-                            <ProductCard
-                              title="Siro ống uống Canxi-D3-K2"
-                              price="105.000đ"
-                              img="https://cdn.nhathuoclongchau.com.vn/unsafe/375x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/00033324_siro-ong-uong-canxi-d3-k2-argi-calci-plus-hop-20-ong-x-10ml-6967-6284_large_24e5272a08.jpg"
-                            />
-                            <ProductCard
-                              title="Siro Brauer Baby Kids"
-                              price="396.000đ"
-                              img="https://cdn.nhathuoclongchau.com.vn/unsafe/375x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/00029302_siro-brauer-baby-kids-liquid-vitamin-c-ho-tro-tang-suc-de-khang-100ml-5384-622b_large_d07548f072.jpg"
-                            />
-                            <ProductCard
-                              title="Viên uống Omexxel 3-6-9"
-                              price="453.000đ"
-                              img="https://cdn.nhathuoclongchau.com.vn/unsafe/375x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/00016480_omexxel-3-6-9-excel-100v-9963-5e74_large_29227f29b4.jpg"
-                            />
-                          </div>
+                              </div>
+                            </>
+                          )}
+                          {activeMegaTab === "tra-cuu-duoc-chat" && (
+                            <>
+                              <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-2xl">🧪</span>
+                                  <h3 className="font-bold text-gray-800 text-xl">
+                                    Dược chất thông dụng
+                                  </h3>
+                                </div>
+                                <Link
+                                  href="/tra-cuu-duoc-chat"
+                                  className="text-blue-600 text-sm font-bold hover:underline flex items-center"
+                                >
+                                  Xem tất cả{" "}
+                                  <span className="ml-1 text-xs">›</span>
+                                </Link>
+                              </div>
+                              <div className="grid grid-cols-3 gap-y-3 gap-x-6 mb-8">
+                                {[
+                                  "Paracetamol",
+                                  "Ibuprofen",
+                                  "Vitamin C",
+                                  "Berberin",
+                                  "Glucosamine",
+                                  "Canxi",
+                                  "Sắt",
+                                  "Magie",
+                                  "Kẽm",
+                                  "Collagen",
+                                  "Biotin",
+                                  "Omega 3",
+                                  "Curcumin",
+                                  "Melatonin",
+                                ].map((item) => (
+                                  <Link
+                                    key={item}
+                                    href={`/tra-cuu-thuoc?keyword=${item}`}
+                                    className="text-gray-600 hover:text-blue-600 hover:font-bold text-sm transition"
+                                  >
+                                    {item}
+                                  </Link>
+                                ))}
+                              </div>
+                              <div className="mt-auto">
+                                <p className="font-bold text-gray-800 mb-2">
+                                  Xem theo chữ cái
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                    .split("")
+                                    .map((char) => (
+                                      <Link
+                                        key={char}
+                                        href="/tra-cuu-duoc-chat"
+                                        className="w-8 h-8 flex items-center justify-center bg-gray-50 border border-gray-200 rounded hover:bg-blue-600 hover:text-white hover:border-blue-600 transition text-sm font-semibold text-gray-600"
+                                      >
+                                        {char}
+                                      </Link>
+                                    ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
+                          {activeMegaTab === "tra-cuu-duoc-lieu" && (
+                            <>
+                              <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-2xl">🌿</span>
+                                  <h3 className="font-bold text-gray-800 text-xl">
+                                    Dược liệu thông dụng
+                                  </h3>
+                                </div>
+                                <Link
+                                  href="/tra-cuu-duoc-lieu"
+                                  className="text-blue-600 text-sm font-bold hover:underline flex items-center"
+                                >
+                                  Xem tất cả{" "}
+                                  <span className="ml-1 text-xs">›</span>
+                                </Link>
+                              </div>
+                              <div className="grid grid-cols-3 gap-y-3 gap-x-6 mb-8">
+                                {[
+                                  "Cam thảo",
+                                  "Bình bát",
+                                  "Bồ kết (Gai)",
+                                  "Bối mẫu (Thân hành)",
+                                  "Bạch mao căn",
+                                  "Câu đằng",
+                                  "Bán biên liên",
+                                  "Ca cao",
+                                  "Bụp giấm",
+                                  "Bại tương thảo",
+                                  "Bạch tật lê",
+                                  "Atiso",
+                                ].map((item) => (
+                                  <Link
+                                    key={item}
+                                    href={`/tra-cuu-thuoc?keyword=${item}`}
+                                    className="text-gray-600 hover:text-blue-600 hover:font-bold text-sm transition"
+                                  >
+                                    {item}
+                                  </Link>
+                                ))}
+                              </div>
+                              <div className="mt-auto">
+                                <p className="font-bold text-gray-800 mb-2">
+                                  Xem theo chữ cái
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                    .split("")
+                                    .map((char) => (
+                                      <Link
+                                        key={char}
+                                        href="/tra-cuu-duoc-lieu"
+                                        className="w-8 h-8 flex items-center justify-center bg-gray-50 border border-gray-200 rounded hover:bg-blue-600 hover:text-white hover:border-blue-600 transition text-sm font-semibold text-gray-600"
+                                      >
+                                        {char}
+                                      </Link>
+                                    ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
 
-                      {/* Content Bệnh (Giữ nguyên) */}
                       {item.type === "custom_benh" && (
                         <div className="grid grid-cols-2 gap-6 mb-6">
                           <div className="flex flex-col gap-2 group cursor-pointer">
@@ -429,19 +556,6 @@ export default function Header() {
                               Tiểu đường là căn bệnh nguy hiểm...
                             </p>
                           </div>
-                          <div className="flex flex-col gap-2 group cursor-pointer">
-                            <div className="h-40 bg-gray-100 rounded-lg overflow-hidden relative">
-                              <div className="w-full h-full bg-green-100 flex items-center justify-center text-gray-400">
-                                [Ảnh bài viết 2]
-                              </div>
-                            </div>
-                            <h4 className="font-bold text-gray-800 text-lg group-hover:text-blue-600 line-clamp-2">
-                              Bí quyết tăng cường sức đề kháng
-                            </h4>
-                            <p className="text-sm text-gray-500 line-clamp-2">
-                              Thời tiết thay đổi thất thường...
-                            </p>
-                          </div>
                         </div>
                       )}
                     </div>
@@ -453,10 +567,12 @@ export default function Header() {
         </div>
       </div>
 
-      {/* MENU MOBILE (Giữ nguyên) */}
       {isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/50" onClick={toggleMenu}></div>
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={toggleMenu}
+          ></div>
           <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl flex flex-col animate-slide-in">
             <div className="p-4 bg-blue-700 text-white flex justify-between items-center">
               <span className="font-bold text-lg">DANH MỤC</span>

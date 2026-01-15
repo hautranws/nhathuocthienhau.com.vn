@@ -4,13 +4,14 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 
 interface Product {
-  id: string | number; // Chấp nhận cả số và chữ
+  id: string | number;
   title: string;
-  name?: string; // Đề phòng trường hợp tên cột là name
+  name?: string;
   price: number;
   flash_sale_price: number;
   img: string;
-  unit?: string;
+  flash_sale_start: string; // Thêm cột này trong DB
+  flash_sale_end: string; // Thêm cột này trong DB
 }
 
 export default function FlashSale() {
@@ -20,117 +21,119 @@ export default function FlashSale() {
     minutes: 0,
     seconds: 0,
   });
-  const [isActive, setIsActive] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [endTime, setEndTime] = useState<number | null>(null);
 
-  // --- 1. LOGIC TÍNH KHUNG GIỜ ---
-  const calculateTimeSlot = () => {
-    const now = new Date();
-    const vnTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-    );
-    const h = vnTime.getHours();
-
-    let endTime = new Date(vnTime);
-    let active = false;
-
-    // Khung 1: 08:00 - 22:00
-    if (h >= 8 && h < 22) {
-      active = true;
-      endTime.setHours(22, 0, 0, 0);
-    }
-    // Khung 2: 22:00 - 24:00
-    else if (h >= 22) {
-      active = true;
-      endTime.setDate(endTime.getDate() + 1);
-      endTime.setHours(0, 0, 0, 0);
-    }
-    // Khung 3: 00:00 - 01:00
-    else if (h >= 0 && h < 1) {
-      active = true;
-      endTime.setHours(1, 0, 0, 0);
-    }
-    // Còn lại (01:00 - 08:00) là nghỉ -> Ẩn
-    else {
-      active = false;
-    }
-
-    // [DEBUG] Bỏ comment dòng dưới nếu muốn hiện FlashSale bất kể giờ giấc để test
-    // active = true; endTime.setHours(h + 2, 0, 0, 0);
-
-    setIsActive(active);
-
-    if (active) {
-      const diff = endTime.getTime() - vnTime.getTime();
-      if (diff > 0) {
-        const _h = Math.floor(diff / (1000 * 60 * 60));
-        const _m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const _s = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeLeft({ hours: _h, minutes: _m, seconds: _s });
-      }
-    }
-  };
-
-  // --- 2. LẤY DỮ LIỆU TỪ SUPABASE ---
+  // --- 1. LẤY DỮ LIỆU TỪ SUPABASE & LỌC THEO GIỜ ---
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchFlashSaleProducts = async () => {
+      const now = new Date().toISOString(); // Lấy giờ hiện tại chuẩn ISO
+
+      // Lấy các sản phẩm đang bật cờ Flash Sale
+      // Logic lọc ngày giờ sẽ xử lý kỹ hơn ở phía dưới để đảm bảo timezone VN
       const { data, error } = await supabase
         .from("products")
         .select("*")
         .eq("is_flash_sale", true)
-        .limit(8);
+        .limit(20);
 
       if (!error && data) {
-        setProducts(data);
+        const currentTime = new Date().getTime();
+
+        // Lọc sản phẩm: Phải nằm trong khung giờ Start và End
+        const activeProducts = data.filter((p: Product) => {
+          if (!p.flash_sale_start || !p.flash_sale_end) return false;
+          const start = new Date(p.flash_sale_start).getTime();
+          const end = new Date(p.flash_sale_end).getTime();
+          return currentTime >= start && currentTime <= end;
+        });
+
+        setProducts(activeProducts.slice(0, 4)); // Chỉ lấy 4 sp hiển thị trang chủ
+
+        // Nếu có sản phẩm, lấy thời gian kết thúc của sản phẩm đầu tiên làm mốc đếm ngược chung
+        if (activeProducts.length > 0) {
+          const firstProductEnd = new Date(
+            activeProducts[0].flash_sale_end
+          ).getTime();
+          setEndTime(firstProductEnd);
+        }
       }
       setLoading(false);
     };
 
-    fetchProducts();
+    fetchFlashSaleProducts();
   }, []);
 
-  // --- 3. ĐỒNG HỒ ---
+  // --- 2. ĐỒNG HỒ ĐẾM NGƯỢC ---
   useEffect(() => {
-    calculateTimeSlot();
-    const timer = setInterval(calculateTimeSlot, 1000);
+    if (!endTime) return;
+
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = endTime - now;
+
+      if (distance < 0) {
+        clearInterval(timer);
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        // Tùy chọn: Reload lại trang hoặc ẩn component khi hết giờ
+        setProducts([]);
+      } else {
+        const hours =
+          Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) +
+          Math.floor(distance / (1000 * 60 * 60 * 24)) * 24; // Tính tổng giờ bao gồm cả ngày
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        setTimeLeft({ hours, minutes, seconds });
+      }
+    }, 1000);
+
     return () => clearInterval(timer);
-  }, []);
+  }, [endTime]);
 
   const formatTime = (num: number) => num.toString().padStart(2, "0");
 
-  if (!isActive && !loading) return null;
-  if (products.length === 0 && !loading) return null;
+  // Nếu không có sản phẩm nào đang chạy Flash Sale thì ẩn luôn khung
+  if (!loading && products.length === 0) return null;
 
   return (
-    <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-xl p-4 md:p-6 mb-8 text-white shadow-xl font-sans">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+    <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-xl p-4 md:p-6 mb-8 text-white shadow-xl font-sans relative overflow-hidden">
+      {/* Hiệu ứng tia sét trang trí */}
+      <div className="absolute top-0 right-0 -mr-10 -mt-10 w-32 h-32 bg-yellow-400 opacity-20 blur-2xl rounded-full"></div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 relative z-10">
         <div className="flex items-center gap-4">
-          <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter">
-            ⚡ F<span className="text-yellow-300">lash</span> Sale
+          <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter flex items-center gap-2">
+            <span className="text-4xl animate-bounce">⚡</span>F
+            <span className="text-yellow-300">lash</span> Sale
           </h2>
-          <div className="flex items-center gap-1 text-black font-bold text-xs md:text-base">
-            <span className="bg-white px-2 py-1 rounded">
+
+          {/* Đồng hồ đếm ngược */}
+          <div className="flex items-center gap-1 text-red-600 font-bold text-xs md:text-base bg-white/20 p-1 rounded-lg backdrop-blur-sm">
+            <span className="text-white text-xs mr-1 uppercase font-semibold hidden md:block">
+              Kết thúc trong:
+            </span>
+            <span className="bg-white px-2 py-1 rounded shadow-sm min-w-[30px] text-center">
               {formatTime(timeLeft.hours)}
             </span>
-            <span className="text-white">:</span>
-            <span className="bg-white px-2 py-1 rounded">
+            <span className="text-white font-bold">:</span>
+            <span className="bg-white px-2 py-1 rounded shadow-sm min-w-[30px] text-center">
               {formatTime(timeLeft.minutes)}
             </span>
-            <span className="text-white">:</span>
-            <span className="bg-white px-2 py-1 rounded">
+            <span className="text-white font-bold">:</span>
+            <span className="bg-white px-2 py-1 rounded shadow-sm min-w-[30px] text-center">
               {formatTime(timeLeft.seconds)}
             </span>
           </div>
         </div>
         <Link
           href="/flash-sale"
-          className="text-white text-sm hover:underline font-bold hidden md:block"
+          className="text-white text-sm hover:underline font-bold hidden md:block bg-white/20 px-3 py-1 rounded-full transition hover:bg-white/30"
         >
           Xem tất cả &gt;
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 relative z-10">
         {products.map((item) => {
           const discountPercent =
             item.price > 0
@@ -147,50 +150,52 @@ export default function FlashSale() {
             }
           } catch (e) {}
 
-          // --- [SỬA LỖI QUAN TRỌNG Ở ĐÂY] ---
-          // Ép kiểu ID thành String trước khi gọi charCodeAt
           const idString = String(item.id);
           const randomSold = (idString.charCodeAt(0) % 50) + 40;
 
           return (
             <Link
-              href={`/san-pham/${item.id}`}
+              href={`/san-pham/${item.id}`} // Link này dẫn đến trang chi tiết
               key={item.id}
-              className="bg-white rounded-lg p-3 text-gray-800 shadow-sm hover:shadow-lg transition cursor-pointer relative group block"
+              className="bg-white rounded-xl p-3 text-gray-800 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer relative group block transform hover:-translate-y-1"
             >
               {discountPercent > 0 && (
-                <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] md:text-xs font-bold px-2 py-1 rounded-br-lg z-10">
-                  -{discountPercent}%
+                <div className="absolute top-0 right-0 bg-yellow-400 text-red-700 text-[10px] md:text-xs font-black px-2 py-1 rounded-bl-lg rounded-tr-lg z-10 shadow-sm">
+                  GIẢM {discountPercent}%
                 </div>
               )}
-              <div className="h-32 md:h-40 flex items-center justify-center mb-2 overflow-hidden rounded-lg">
+
+              <div className="h-32 md:h-40 flex items-center justify-center mb-3 overflow-hidden rounded-lg bg-gray-50">
                 <img
                   src={displayImage}
                   alt={item.title || item.name}
-                  className="h-full object-contain group-hover:scale-110 transition duration-500"
+                  className="h-full object-contain group-hover:scale-110 transition duration-500 mix-blend-multiply"
                 />
               </div>
-              <h3 className="text-xs md:text-sm font-semibold line-clamp-2 h-8 md:h-10 mb-1 group-hover:text-red-600 transition-colors">
+
+              <h3 className="text-xs md:text-sm font-semibold line-clamp-2 h-8 md:h-10 mb-2 group-hover:text-red-600 transition-colors">
                 {item.title || item.name}
               </h3>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="text-blue-700 font-bold text-sm md:text-lg">
-                  {Number(item.flash_sale_price).toLocaleString("vi-VN")}đ
-                </span>
-                <span className="text-gray-400 text-[10px] md:text-xs line-through">
-                  {Number(item.price).toLocaleString("vi-VN")}đ
+
+              <div className="flex flex-col mb-3">
+                <div className="flex items-end gap-2">
+                  <span className="text-red-600 font-extrabold text-base md:text-lg leading-none">
+                    {Number(item.flash_sale_price).toLocaleString("vi-VN")}đ
+                  </span>
+                </div>
+                <span className="text-gray-400 text-[10px] md:text-xs line-through mt-1">
+                  Giá gốc: {Number(item.price).toLocaleString("vi-VN")}đ
                 </span>
               </div>
-              <div className="relative w-full h-3 md:h-4 bg-gray-200 rounded-full overflow-hidden">
+
+              {/* Thanh trạng thái đã bán */}
+              <div className="relative w-full h-4 bg-red-100 rounded-full overflow-hidden border border-red-200">
                 <div
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-400 to-red-500"
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-500 to-red-600"
                   style={{ width: `${randomSold}%` }}
                 ></div>
-                <span className="absolute top-0 left-0 w-full text-[8px] md:text-[10px] text-center text-white font-bold leading-3 md:leading-4 shadow-sm">
-                  Đã bán {randomSold}%
-                </span>
-                <span className="absolute top-0 left-1 text-[10px] animate-pulse">
-                  🔥
+                <span className="absolute top-0 left-0 w-full flex items-center justify-center text-[9px] text-white font-bold uppercase h-full z-10 drop-shadow-sm">
+                  <span className="mr-1">🔥</span> Đã bán {randomSold}
                 </span>
               </div>
             </Link>

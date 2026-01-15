@@ -34,20 +34,25 @@ export default function AddProductPage() {
     title: "",
     price: "",
     old_price: "",
-    img: "", // Trường này sẽ lưu chuỗi JSON của mảng ảnh (VD: '["link1", "link2"]')
+    img: "", 
     category: "",
     sub_category: [] as string[],
     brand: "",
     origin: "",
     unit: "",
     description: "",
-    // --- [MỚI] THÊM CÁC TRƯỜNG CHI TIẾT ĐỂ TRÁNH LỖI "UNDEFINED" ---
-    registration_no: "", // Số đăng ký
-    dosage_form: "", // Dạng bào chế
-    specification: "", // Quy cách đóng gói
-    manufacturer: "", // Nhà sản xuất
-    ingredients: "", // Thành phần
-    expiry: "", // Hạn sử dụng
+    // --- CÁC TRƯỜNG CHI TIẾT CŨ ---
+    registration_no: "", 
+    dosage_form: "", 
+    specification: "", 
+    manufacturer: "", 
+    ingredients: "", 
+    expiry: "", 
+    // --- [MỚI] THÊM CÁC TRƯỜNG CHUYÊN SÂU CHO THUỐC ---
+    is_prescription: false, // Thuốc kê đơn (Rx)
+    indications: "",        // Chỉ định
+    contraindications: "",  // Chống chỉ định
+    // Đã xóa dosage (Liều dùng)
   });
 
   // Xử lý khi chọn Danh mục cha -> Tự động load danh mục con
@@ -57,20 +62,15 @@ export default function AddProductPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      // Chuyển FileList thành Array để dễ xử lý
       const fileArray = Array.from(files);
-
-      // Kiểm tra giới hạn 6 ảnh
       if (fileArray.length > 6) {
         alert("⚠️ Bạn chỉ được chọn tối đa 6 ảnh!");
-        // Chỉ lấy 6 ảnh đầu tiên nếu chọn quá
         const limitedFiles = fileArray.slice(0, 6);
         setSelectedFiles(limitedFiles);
         const urls = limitedFiles.map((file) => URL.createObjectURL(file));
         setPreviewUrls(urls);
       } else {
         setSelectedFiles(fileArray);
-        // Tạo link xem trước cho tất cả ảnh
         const urls = fileArray.map((file) => URL.createObjectURL(file));
         setPreviewUrls(urls);
       }
@@ -86,23 +86,18 @@ export default function AddProductPage() {
       const groupData = CATEGORY_OPTIONS[selectedCat];
       let items: any[] = [];
 
-      // Duyệt qua các nhóm lớn (VD: NhomTriLieu, Vitamin...)
       Object.values(groupData).forEach((group: any) => {
         if (group.items) {
-          // Duyệt qua từng mục trong nhóm
           group.items.forEach((item: any) => {
-            // KIỂM TRA: Nếu item có children (dạng Thuốc), lấy children ra
             if (item.children && item.children.length > 0) {
               items = [...items, ...item.children];
             } else {
-              // Nếu không có children (dạng TPCN), lấy chính item đó
               items.push(item);
             }
           });
         }
       });
 
-      // Lọc trùng lặp (nếu có)
       const uniqueItems = Array.from(new Set(items.map((i) => i.title))).map(
         (title) => items.find((i) => i.title === title)
       );
@@ -111,7 +106,6 @@ export default function AddProductPage() {
       setSubOptions([]);
     }
   };
-  // -------------------------------------------------------
 
   const handleSubCategoryChange = (subTitle: string) => {
     setFormData((prev) => {
@@ -138,21 +132,17 @@ export default function AddProductPage() {
     }
 
     try {
-      let finalImageString = ""; // Chuỗi JSON để lưu vào DB
+      let finalImageString = ""; 
 
-      // --- LOGIC UPLOAD NHIỀU ẢNH VÀO BUCKET 'product' ---
       if (selectedFiles.length > 0) {
         setUploading(true);
         const uploadedUrls: string[] = [];
 
-        // Duyệt qua từng file và upload
         for (const file of selectedFiles) {
-          // Tạo tên file ngẫu nhiên để không bị trùng
           const fileName = `${Date.now()}_${Math.random()
             .toString(36)
             .substring(7)}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
 
-          // Upload vào bucket 'product'
           const { error: uploadError } = await supabase.storage
             .from("product")
             .upload(fileName, file);
@@ -160,7 +150,6 @@ export default function AddProductPage() {
           if (uploadError)
             throw new Error("Lỗi upload: " + uploadError.message);
 
-          // Lấy link công khai
           const { data: urlData } = supabase.storage
             .from("product")
             .getPublicUrl(fileName);
@@ -168,42 +157,42 @@ export default function AddProductPage() {
           uploadedUrls.push(urlData.publicUrl);
         }
 
-        // Chuyển mảng link thành chuỗi JSON (Ví dụ: '["url1", "url2"]')
         finalImageString = JSON.stringify(uploadedUrls);
         setUploading(false);
       } else if (formData.img) {
-        // Nếu người dùng nhập link thủ công (không upload file)
-        // Ta cũng đóng gói nó thành mảng JSON chứa 1 phần tử để đồng bộ
-        // Kiểm tra xem nó đã là JSON chưa, nếu chưa thì bọc lại
         if (formData.img.startsWith("[")) {
           finalImageString = formData.img;
         } else {
           finalImageString = JSON.stringify([formData.img]);
         }
       }
-      // ---------------------------------------------------
 
-      // Chuyển mảng sub_category thành chuỗi
       const subCategoryString = formData.sub_category.join(", ");
 
       const payload = {
         title: formData.title,
         price: formData.price,
         old_price: formData.old_price,
-        img: finalImageString, // Lưu chuỗi JSON ảnh
+        img: finalImageString, 
         category: formData.category,
         sub_category: subCategoryString,
         brand: formData.brand,
         origin: formData.origin,
         unit: formData.unit,
         description: formData.description,
-        // --- [MỚI] GỬI THÊM CÁC TRƯỜNG NÀY ---
+        // --- CÁC TRƯỜNG CŨ ---
         registration_no: formData.registration_no,
         dosage_form: formData.dosage_form,
         specification: formData.specification,
         manufacturer: formData.manufacturer,
         ingredients: formData.ingredients,
         expiry: formData.expiry,
+        // --- [SỬA] CHỈ GỬI DỮ LIỆU THUỐC NẾU LÀ THUỐC ---
+        // Nếu không phải thuốc, gửi null hoặc false để tránh rác data
+        is_prescription: formData.category === "Thuốc" ? formData.is_prescription : false,
+        indications: formData.category === "Thuốc" ? formData.indications : null,
+        contraindications: formData.category === "Thuốc" ? formData.contraindications : null,
+        // Đã xóa dosage khỏi payload
       };
 
       const { error } = await supabase.from("products").insert([payload]);
@@ -229,6 +218,11 @@ export default function AddProductPage() {
         manufacturer: "",
         ingredients: "",
         expiry: "",
+        // Reset trường mới
+        is_prescription: false,
+        indications: "",
+        contraindications: "",
+        // dosage đã xóa
       });
       setSelectedFiles([]);
       setPreviewUrls([]);
@@ -290,7 +284,7 @@ export default function AddProductPage() {
             <input
               type="file"
               accept="image/*"
-              multiple // Cho phép chọn nhiều file cùng lúc
+              multiple 
               onChange={handleFileChange}
               className="block w-full text-sm text-gray-500
                 file:mr-4 file:py-2 file:px-4
@@ -304,7 +298,6 @@ export default function AddProductPage() {
               ảnh.
             </p>
 
-            {/* Grid hiển thị các ảnh xem trước */}
             {previewUrls.length > 0 ? (
               <div className="mt-4 grid grid-cols-3 md:grid-cols-6 gap-2">
                 {previewUrls.map((url, index) => (
@@ -321,7 +314,6 @@ export default function AddProductPage() {
                 ))}
               </div>
             ) : (
-              // Backup nhập link tay
               <div className="mt-4">
                 <p className="text-xs text-gray-400 mb-1">
                   Hoặc dán 1 link ảnh (nếu không upload):
@@ -338,7 +330,6 @@ export default function AddProductPage() {
               </div>
             )}
           </div>
-          {/* ------------------------------------------- */}
 
           {/* Hàng 3: Danh mục */}
           <div className="bg-blue-50 p-6 rounded-lg border border-blue-100">
@@ -361,7 +352,6 @@ export default function AddProductPage() {
               </select>
             </div>
 
-            {/* Chọn nhiều loại chi tiết */}
             <div>
               <label className="block text-sm font-bold text-blue-800 mb-2">
                 2. Chọn Loại Chi Tiết (Có thể chọn nhiều)
@@ -485,7 +475,7 @@ export default function AddProductPage() {
             </div>
           </div>
 
-          {/* --- [MỚI] KHU VỰC THÔNG TIN CHI TIẾT (CHUẨN LONG CHÂU) --- */}
+          {/* --- KHU VỰC THÔNG TIN CHI TIẾT --- */}
           <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200 mt-6">
             <h3 className="text-lg font-bold text-yellow-800 mb-4 border-b border-yellow-200 pb-2">
               📋 Thông tin dược phẩm chi tiết
@@ -591,16 +581,57 @@ export default function AddProductPage() {
               </div>
             </div>
           </div>
+
+          {/* --- [SỬA] KHU VỰC THÔNG TIN CHUYÊN SÂU (CHỈ HIỆN KHI LÀ "THUỐC") --- */}
+          {formData.category === "Thuốc" && (
+            <div className="bg-red-50 p-6 rounded-lg border border-red-200 mt-6 animate-fade-in">
+                <h3 className="text-lg font-bold text-red-800 mb-4 border-b border-red-200 pb-2 flex items-center justify-between">
+                <span>🩺 Thông tin chỉ định (Dành riêng cho Thuốc)</span>
+                {/* Checkbox Thuốc kê đơn */}
+                <label className="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1 rounded shadow-sm border border-red-100">
+                    <input 
+                        type="checkbox" 
+                        className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
+                        checked={formData.is_prescription}
+                        onChange={(e) => setFormData({...formData, is_prescription: e.target.checked})}
+                    />
+                    <span className="text-sm font-bold text-red-600 uppercase">⚠️ Thuốc kê đơn (Rx)</span>
+                </label>
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Công dụng / Chỉ định</label>
+                        <textarea 
+                            className="w-full p-3 border rounded-lg h-24"
+                            placeholder="Thuốc dùng để điều trị bệnh gì?"
+                            value={formData.indications}
+                            onChange={(e) => setFormData({...formData, indications: e.target.value})}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Chống chỉ định</label>
+                        <textarea 
+                            className="w-full p-3 border rounded-lg h-24"
+                            placeholder="Không dùng cho trường hợp nào?"
+                            value={formData.contraindications}
+                            onChange={(e) => setFormData({...formData, contraindications: e.target.value})}
+                        />
+                    </div>
+                    {/* Đã xóa ô nhập Liều dùng (Dosage) tại đây theo yêu cầu */}
+                </div>
+            </div>
+          )}
           {/* ------------------------------------------------------------- */}
 
           {/* Hàng 6: Mô tả */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">
-              Mô tả chi tiết
+              Mô tả chi tiết (Marketing)
             </label>
             <textarea
               className="w-full p-3 border rounded-lg h-32"
-              placeholder="Nhập thông tin chi tiết sản phẩm..."
+              placeholder="Nhập thông tin giới thiệu, quảng cáo sản phẩm..."
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })

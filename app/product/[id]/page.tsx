@@ -3,11 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import ProductGallery from "@/components/ProductGallery";
 import ProductSpecs from "@/components/ProductSpecs";
-import AddToCartButton from "@/components/AddToCartButton"; // Nếu bạn đã có file này thì bỏ comment
-
-// TẠM THỜI ẨN CÁC FILE CHƯA CÓ ĐỂ TRÁNH LỖI WEB
-// import RelatedProducts from "@/components/RelatedProducts";
-// import ProductReviews from "@/components/ProductReviews";
+import AddToCartButton from "@/components/AddToCartButton";
 
 export default async function ProductDetail(props: {
   params: Promise<{ id: string }>;
@@ -15,6 +11,7 @@ export default async function ProductDetail(props: {
   const params = await props.params;
   const id = params.id;
 
+  // 1. Lấy dữ liệu sản phẩm
   const { data: product, error } = await supabase
     .from("products")
     .select("*")
@@ -37,32 +34,33 @@ export default async function ProductDetail(props: {
     );
   }
 
-  // --- XỬ LÝ LOGIC ALBUM ẢNH (QUAN TRỌNG) ---
-  let productImages: string[] = [];
+  // --- LOGIC KIỂM TRA FLASH SALE ---
+  const now = new Date().getTime();
+  const start = product.flash_sale_start
+    ? new Date(product.flash_sale_start).getTime()
+    : 0;
+  const end = product.flash_sale_end
+    ? new Date(product.flash_sale_end).getTime()
+    : 0;
+  const isFlashSaleActive = product.is_flash_sale && now >= start && now <= end;
 
+  // --- XỬ LÝ LOGIC ALBUM ẢNH ---
+  let productImages: string[] = [];
   if (product.img) {
     try {
-      // Kiểm tra xem có phải định dạng JSON mảng không (bắt đầu bằng [ )
       if (product.img.trim().startsWith("[")) {
         const parsed = JSON.parse(product.img);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          productImages = parsed;
-        } else {
-          productImages = [product.img];
-        }
+        productImages =
+          Array.isArray(parsed) && parsed.length > 0 ? parsed : [product.img];
       } else {
-        // Nếu là link thường (dữ liệu cũ)
         productImages = [product.img];
       }
     } catch (e) {
-      // Nếu lỗi parse, coi như là link thường
       productImages = [product.img];
     }
   } else {
-    // Nếu không có ảnh, dùng ảnh placeholder
     productImages = ["https://via.placeholder.com/500?text=No+Image"];
   }
-  // ---------------------------------------------
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans pb-10 pt-6">
@@ -71,8 +69,10 @@ export default async function ProductDetail(props: {
         <div className="text-sm text-gray-500 mb-4">
           <Link href="/" className="hover:text-blue-600">
             Trang chủ
-          </Link>{" "}
-          / <span className="text-gray-600">{product.category}</span> /{" "}
+          </Link>
+          {" / "}
+          <span className="text-gray-600">{product.category}</span>
+          {" / "}
           <span className="text-gray-800 font-medium truncate">
             {product.title}
           </span>
@@ -80,10 +80,10 @@ export default async function ProductDetail(props: {
 
         {/* --- KHỐI THÔNG TIN CHÍNH --- */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row mt-4 p-6 gap-8">
-          {/* CỘT TRÁI: ẢNH (ĐÃ FIX LOGIC) */}
+          {/* CỘT TRÁI: ẢNH */}
           <div className="md:w-5/12">
             <ProductGallery
-              mainImage={productImages[0]} // Ảnh đầu tiên
+              mainImage={productImages[0]}
               gallery={productImages.slice(1)}
             />
           </div>
@@ -100,7 +100,16 @@ export default async function ProductDetail(props: {
                 </span>
               </div>
 
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight flex flex-wrap items-center gap-2">
+                {/* --- [SỬA] CHỈ HIỆN RX NẾU LÀ THUỐC --- */}
+                {product.category === "Thuốc" && product.is_prescription && (
+                  <span
+                    className="bg-red-600 text-white text-xs px-2 py-1 rounded border border-red-700 shadow-sm"
+                    title="Thuốc bán theo đơn"
+                  >
+                    Rx - Thuốc kê đơn
+                  </span>
+                )}
                 {product.title || product.name}
               </h1>
 
@@ -123,29 +132,64 @@ export default async function ProductDetail(props: {
               </div>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex items-end gap-3">
-                <span className="text-3xl md:text-4xl font-bold text-blue-700">
-                  {Number(product.price).toLocaleString("vi-VN")}đ
-                </span>
-
-                {product.old_price && (
-                  <span className="text-gray-400 text-lg line-through mb-1">
-                    {Number(product.old_price).toLocaleString("vi-VN")}đ
+            {/* --- KHU VỰC HIỂN THỊ GIÁ --- */}
+            {isFlashSaleActive ? (
+              <div className="mb-6 bg-gradient-to-r from-red-600 to-orange-500 rounded-lg p-4 text-white shadow-md relative overflow-hidden">
+                <div className="absolute top-[-10px] right-[-10px] opacity-20 text-6xl pointer-events-none select-none">
+                  ⚡
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-black text-yellow-300 uppercase tracking-wider text-sm animate-pulse">
+                    ⚡ Flash Sale
                   </span>
-                )}
-
-                {product.discount && (
-                  <span className="text-blue-600 bg-blue-100 px-2 py-0.5 rounded text-xs font-bold mb-2">
-                    {product.discount}
+                  <span className="bg-white text-red-600 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                    Đang diễn ra
                   </span>
-                )}
+                </div>
+                <div className="flex items-end gap-3">
+                  <span className="text-3xl md:text-5xl font-extrabold text-white">
+                    {Number(product.flash_sale_price).toLocaleString("vi-VN")}đ
+                  </span>
+                  <span className="text-white/80 text-lg line-through mb-1.5">
+                    {Number(product.price).toLocaleString("vi-VN")}đ
+                  </span>
+                  <span className="bg-yellow-400 text-red-700 text-xs font-black px-2 py-1 rounded mb-2 shadow-sm">
+                    -
+                    {Math.round(
+                      ((product.price - product.flash_sale_price) /
+                        product.price) *
+                        100
+                    )}
+                    %
+                  </span>
+                </div>
+                <p className="text-xs text-white/90 mt-2 font-medium">
+                  🔥 Giá sốc chỉ áp dụng trong khung giờ vàng.
+                </p>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Giá đã bao gồm thuế (nếu có)
-                {product.unit ? ` / ${product.unit}` : ""}
-              </p>
-            </div>
+            ) : (
+              <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                <div className="flex items-end gap-3">
+                  <span className="text-3xl md:text-4xl font-bold text-blue-700">
+                    {Number(product.price).toLocaleString("vi-VN")}đ
+                  </span>
+                  {product.old_price && (
+                    <span className="text-gray-400 text-lg line-through mb-1">
+                      {Number(product.old_price).toLocaleString("vi-VN")}đ
+                    </span>
+                  )}
+                  {product.discount && (
+                    <span className="text-blue-600 bg-blue-100 px-2 py-0.5 rounded text-xs font-bold mb-2">
+                      {product.discount}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Giá đã bao gồm thuế (nếu có){" "}
+                  {product.unit ? ` / ${product.unit}` : ""}
+                </p>
+              </div>
+            )}
 
             {/* Thông tin tóm tắt */}
             <div className="mb-6 space-y-3 text-sm">
@@ -178,9 +222,15 @@ export default async function ProductDetail(props: {
             </div>
 
             {/* Nút mua hàng */}
-            {/* Sử dụng component Client nếu có để xử lý logic thêm vào giỏ */}
             <div className="mt-auto">
-              <AddToCartButton product={product} />
+              <AddToCartButton
+                product={{
+                  ...product,
+                  price: isFlashSaleActive
+                    ? product.flash_sale_price
+                    : product.price,
+                }}
+              />
             </div>
 
             {/* Cam kết */}
@@ -198,8 +248,42 @@ export default async function ProductDetail(props: {
           </div>
         </div>
 
-        {/* --- [MỚI] BẢNG THÔNG SỐ KỸ THUẬT & THÀNH PHẦN --- */}
-        {/* Component này giúp hiển thị các thông tin bạn vừa nhập trong admin */}
+        {/* --- [SỬA] KHU VỰC THÔNG TIN CHUYÊN SÂU CHO THUỐC --- */}
+        {/* Chỉ hiện nếu danh mục là "Thuốc" và có dữ liệu */}
+        {product.category === "Thuốc" &&
+          (product.indications || product.contraindications) && (
+            <div className="mt-6 bg-white p-6 rounded-xl shadow-sm border border-blue-100">
+              <h2 className="text-xl font-bold text-blue-800 mb-4 border-b pb-2 flex items-center gap-2">
+                <span>🩺</span> Thông tin chỉ định
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {product.indications && (
+                  <div>
+                    <h3 className="font-bold text-gray-800 mb-2">
+                      ✅ Chỉ định (Công dụng):
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">
+                      {product.indications}
+                    </p>
+                  </div>
+                )}
+
+                {product.contraindications && (
+                  <div>
+                    <h3 className="font-bold text-red-600 mb-2">
+                      ⛔ Chống chỉ định:
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">
+                      {product.contraindications}
+                    </p>
+                  </div>
+                )}
+                {/* Đã xóa hiển thị Liều dùng (Dosage) tại đây */}
+              </div>
+            </div>
+          )}
+
+        {/* --- BẢNG THÔNG SỐ KỸ THUẬT & THÀNH PHẦN --- */}
         <div className="mt-6">
           <ProductSpecs product={product} />
         </div>
@@ -212,11 +296,8 @@ export default async function ProductDetail(props: {
             </h2>
             <div
               className="text-gray-700 leading-relaxed prose max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: product.description,
-              }}
+              dangerouslySetInnerHTML={{ __html: product.description }}
             />
-            {/* Fallback nếu không có HTML (text thường) */}
             {!product.description.includes("<") && (
               <p className="text-gray-600 whitespace-pre-line mt-2">
                 {product.description}
