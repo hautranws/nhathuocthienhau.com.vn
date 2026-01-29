@@ -12,7 +12,7 @@ export default async function Home() {
   const { data: products, error } = await supabase
     .from("products")
     .select(
-      "id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price"
+      "id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price",
     )
     .order("id", { ascending: false })
     .limit(20);
