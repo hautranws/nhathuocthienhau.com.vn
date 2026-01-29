@@ -96,8 +96,8 @@ export default function SearchBar() {
         <input
           type="text"
           placeholder="Tìm tên thuốc, bệnh lý..."
-          // 2. TĂNG CHIỀU CAO Ở ĐÂY: py-2 -> py-3
-          className="w-full py-3 px-6 rounded-full text-black outline-none shadow-lg bg-white text-base"
+          // 👇 ĐÃ THÊM: border border-black để tạo viền đen
+          className="w-full py-3 px-6 rounded-full text-black outline-none shadow-lg bg-white text-base border border-black"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}

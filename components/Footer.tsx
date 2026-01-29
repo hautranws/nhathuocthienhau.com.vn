@@ -8,7 +8,7 @@ export default function Footer() {
         {/* Lưới 4 cột thông tin */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           
-          {/* Cột 1: Giới thiệu (ĐÃ SỬA LINK) */}
+          {/* Cột 1: Giới thiệu */}
           <div>
             <h3 className="font-bold text-lg mb-4 text-blue-800 uppercase">
               Về Thiên Hậu Pharma
@@ -20,7 +20,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                {/* Nếu chưa có bài viết hệ thống, tạm trỏ về giới thiệu */}
                 <Link href="/thong-tin/gioi-thieu" className="hover:text-blue-600 transition-colors">
                   Hệ thống nhà thuốc
                 </Link>
@@ -43,7 +42,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Cột 2: Danh mục (ĐÃ CẬP NHẬT HREF CHUẨN) */}
+          {/* Cột 2: Danh mục */}
           <div>
             <h3 className="font-bold text-lg mb-4 text-blue-800 uppercase">
               Danh mục chính
@@ -77,7 +76,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Cột 3: Hỗ trợ khách hàng (THÊM LINK GỌI ĐIỆN) */}
+          {/* Cột 3: Hỗ trợ khách hàng */}
           <div>
             <h3 className="font-bold text-lg mb-4 text-blue-800 uppercase">
               Tổng đài hỗ trợ
@@ -98,7 +97,7 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Cột 4: Kết nối & Chứng nhận (THAY ICON & ẢNH ĐẸP HƠN) */}
+          {/* Cột 4: Kết nối & Chứng nhận (ĐÃ CẬP NHẬT) */}
           <div>
             <h3 className="font-bold text-lg mb-4 text-blue-800 uppercase">
               Kết nối với chúng tôi
@@ -119,24 +118,29 @@ export default function Footer() {
             </div>
 
             <h3 className="font-bold text-sm mb-2 text-blue-800 uppercase">Chứng nhận</h3>
-            <div className="flex gap-2">
-              {/* Ảnh logo BCT */}
-              <div className="w-32">
+            <div className="flex items-center gap-2">
+              {/* Ảnh logo BCT - NHỚ THAY LINK CỦA BẠN VÀO DƯỚI */}
+              <a href="http://online.gov.vn/Home/WebDetails/139108" target="_blank" rel="nofollow" className="block w-36">
                  <img 
-                    
+                    src="http://online.gov.vn/Content/EndUser/LogoCCDVSaleNoti/logoSaleNoti.png"
                     alt="Đã thông báo Bộ Công Thương"
-                    className="w-full h-auto object-contain cursor-pointer hover:opacity-80 transition"
+                    className="w-full h-auto object-contain cursor-pointer hover:opacity-90 transition"
                  />
-              </div>
-              {/* DMCA Badge */}
-              <div className="w-24 h-8 bg-blue-100 flex items-center justify-center text-xs text-blue-600 font-bold border border-blue-300 rounded cursor-pointer">
-                DMCA Protected
-              </div>
+              </a>
+
+              {/* DMCA Badge - NHỚ THAY ID VÀ LINK CỦA BẠN VÀO DƯỚI */}
+              <a href="https://www.dmca.com/Protection/Status.aspx?ID=19994d8b-b465-4526-97c3-27f4399fd298" target="_blank" rel="nofollow" title="DMCA.com Protection Status" className="block w-24">
+                <img 
+                    src="https://images.dmca.com/Badges/dmca-badge-w100-5x1-01.png?ID=YOUR_DMCA_ID" 
+                    alt="DMCA.com Protection Status" 
+                    className="w-full h-auto object-contain cursor-pointer hover:opacity-90 transition"
+                />
+              </a>
             </div>
           </div>
         </div>
 
-        {/* Dòng bản quyền cuối cùng (GIỮ NGUYÊN) */}
+        {/* Dòng bản quyền cuối cùng */}
         <div className="border-t pt-6 text-center text-xs text-gray-500">
           <p className="mb-2 font-bold text-gray-700 text-sm">
             © 2025 Hộ kinh doanh nhà thuốc Thiên Hậu 1. Chủ sở hữu Phạm Anh Thư

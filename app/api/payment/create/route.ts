@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
-import nodemailer from "nodemailer"; // Thư viện gửi mail
+import nodemailer from "nodemailer"; 
 
 // Giữ nguyên các hàm import thanh toán của bạn
 import { createVNPayUrl } from "../../../../lib/payment/vnpay";
@@ -11,16 +11,14 @@ import { createPayOSLink } from "../../../../lib/payment/payos";
 // ⚙️ CẤU HÌNH GỬI THÔNG BÁO (GIỮ NGUYÊN)
 // ==================================================================
 
-// 1. Cấu hình Email (Dùng Gmail App Password)
 const EMAIL_CONFIG = {
-  user: "email_cua_ban@gmail.com", // ⚠️ Điền Email gửi đi
-  pass: "xxxx xxxx xxxx xxxx",     // ⚠️ Điền Mật khẩu ứng dụng
-  staffEmail: "email_nhan_vien@gmail.com", // ⚠️ Email nhân viên
+  user: "email_cua_ban@gmail.com", 
+  pass: "xxxx xxxx xxxx xxxx",     
+  staffEmail: "email_nhan_vien@gmail.com", 
 };
 
-// 2. Cấu hình Zalo OA
 const ZALO_CONFIG = {
-  accessToken: "DIEN_ZALO_ACCESS_TOKEN_VAO_DAY", // ⚠️ Token Zalo
+  accessToken: "DIEN_ZALO_ACCESS_TOKEN_VAO_DAY", 
   oaId: "ID_ZALO_OA_CUA_BAN", 
 };
 
@@ -30,92 +28,92 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Nhận dữ liệu từ Frontend (Thêm couponCode)
-    const { items, customer, paymentMethod, couponCode } = body;
+    // 👇 [SỬA] Nhận thêm userId từ Frontend gửi lên
+    const { items, customer, paymentMethod, couponCode, userId: clientUserId } = body;
     const { name, phone, address, note } = customer;
 
-    // --- BƯỚC 0: TÍNH TOÁN LẠI GIÁ & MÃ GIẢM GIÁ (SERVER SIDE) ---
-    // ⚠️ QUAN TRỌNG: Tính lại tổng tiền từ danh sách items để tránh hack giá từ Frontend
+    // --- BƯỚC 0: TÍNH TOÁN LẠI GIÁ & MÃ GIẢM GIÁ (GIỮ NGUYÊN) ---
     const serverSubTotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
     
     let discountAmount = 0;
     let finalAmount = serverSubTotal;
     let appliedCouponCode = null;
 
-    // Nếu có mã giảm giá gửi lên
     if (couponCode) {
-        // Lấy thông tin coupon từ DB bằng quyền Admin
         const { data: coupon } = await supabaseAdmin
             .from("coupons")
             .select("*")
-            .eq("code", couponCode.toUpperCase().trim()) // Chuyển chữ hoa, xóa khoảng trắng
+            .eq("code", couponCode.toUpperCase().trim())
             .single();
 
         if (coupon) {
-            // Kiểm tra các điều kiện
             const now = new Date();
             const expiry = coupon.expiry_date ? new Date(coupon.expiry_date) : null;
             const isExpired = expiry && now > expiry;
             const isLimitReached = coupon.usage_limit > 0 && coupon.used_count >= coupon.usage_limit;
             const isMinOrderMet = serverSubTotal >= (coupon.min_order_value || 0);
 
-            // Nếu mã hợp lệ
             if (coupon.is_active && !isExpired && !isLimitReached && isMinOrderMet) {
-                // Tính tiền giảm
                 if (coupon.discount_type === 'percent') {
                     discountAmount = (serverSubTotal * coupon.discount_value) / 100;
                 } else {
                     discountAmount = coupon.discount_value;
                 }
                 
-                // Không giảm quá số tiền đơn hàng
                 if (discountAmount > serverSubTotal) discountAmount = serverSubTotal;
-
                 finalAmount = serverSubTotal - discountAmount;
                 appliedCouponCode = coupon.code;
 
-                // ⬇️ CẬP NHẬT: Trừ lượt sử dụng của mã (Tăng used_count lên 1)
                 await supabaseAdmin.from("coupons").update({ used_count: coupon.used_count + 1 }).eq("id", coupon.id);
             }
         }
     }
 
-    // --- BƯỚC 1: XỬ LÝ USER (TỰ ĐỘNG TẠO TÀI KHOẢN) ---
-    let formattedPhone = phone.trim();
-    if (formattedPhone.startsWith("0")) {
-      formattedPhone = "84" + formattedPhone.substring(1);
-    }
-    formattedPhone = formattedPhone.replace("+", "");
-
-    let userId = null;
+    // --- [SỬA] BƯỚC 1: XỬ LÝ USER (ƯU TIÊN USER ĐANG ĐĂNG NHẬP) ---
+    
+    let userId = clientUserId; // 1. Ưu tiên dùng ID từ frontend gửi lên
     let isNewUser = false;
-    const randomPassword = Math.random().toString(36).slice(-8) + "Aa1@";
 
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      phone: formattedPhone,
-      password: randomPassword,
-      email_confirm: true,
-      phone_confirm: true,
-      user_metadata: { full_name: name, address: address, phone: phone },
-    });
+    // 2. Chỉ khi KHÔNG CÓ userId (Khách vãng lai) thì mới tạo User mới theo SĐT
+    if (!userId) {
+        let formattedPhone = phone.trim();
+        if (formattedPhone.startsWith("0")) {
+          formattedPhone = "84" + formattedPhone.substring(1);
+        }
+        formattedPhone = formattedPhone.replace("+", "");
 
-    if (!createError && newUser) {
-      userId = newUser.user.id;
-      isNewUser = true;
+        const randomPassword = Math.random().toString(36).slice(-8) + "Aa1@";
+
+        // Tạo user mới
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          phone: formattedPhone,
+          password: randomPassword,
+          email_confirm: true,
+          phone_confirm: true,
+          user_metadata: { full_name: name, address: address, phone: phone },
+        });
+
+        if (!createError && newUser) {
+          userId = newUser.user.id;
+          isNewUser = true;
+        } else {
+           // [MỞ RỘNG] Nếu tạo lỗi (do SĐT đã tồn tại), cố gắng tìm user đó để gán đơn hàng (tránh đơn vô chủ)
+           // Lưu ý: Phần này tùy chọn, nếu muốn an toàn thì để userId = null đơn vẫn tạo được nhưng không gắn vào ai
+           console.log("User creation failed or exists:", createError?.message);
+        }
     }
 
-    // --- BƯỚC 2: TẠO ĐƠN HÀNG VÀO DB ---
-    // Lưu ý: Lưu thêm discount_amount, final_price, coupon_code
+    // --- BƯỚC 2: TẠO ĐƠN HÀNG VÀO DB (GIỮ NGUYÊN) ---
     const { data: orderData, error: orderError } = await supabaseAdmin
       .from("orders")
       .insert([
         {
-          user_id: userId,
+          user_id: userId, // ID này giờ đây có thể là của khách cũ hoặc mới
           customer_name: name,
           phone: phone,
           address: address,
-          total_price: serverSubTotal, // Giá gốc trước giảm
-          final_price: finalAmount,    // Giá cuối cùng khách phải trả
+          total_price: serverSubTotal,
+          final_price: finalAmount,
           discount_amount: discountAmount,
           coupon_code: appliedCouponCode,
           payment_method: paymentMethod,
@@ -143,14 +141,13 @@ export async function POST(req: Request) {
     if (itemsError) throw itemsError;
 
     // ==================================================================
-    // 🔥 GỬI THÔNG BÁO (EMAIL & ZALO)
+    // 🔥 GỬI THÔNG BÁO (GIỮ NGUYÊN)
     // ==================================================================
     (async () => {
       try {
         const orderId = orderData.id;
-        const totalStr = finalAmount.toLocaleString("vi-VN"); // Gửi số tiền cuối cùng
+        const totalStr = finalAmount.toLocaleString("vi-VN"); 
         
-        // A. GỬI EMAIL CHO NHÂN VIÊN
         if (EMAIL_CONFIG.user && EMAIL_CONFIG.pass) {
             const transporter = nodemailer.createTransport({
                 service: "gmail",
@@ -161,7 +158,6 @@ export async function POST(req: Request) {
                 `<li>${item.title || item.name} - SL: <b>${item.quantity}</b></li>`
             ).join("");
 
-            // Nếu có mã giảm giá thì hiện thêm dòng này trong mail
             let couponHtml = "";
             if (discountAmount > 0) {
                 couponHtml = `<p style="color: green;"><b>🎁 Đã dùng mã:</b> ${appliedCouponCode} (Giảm ${discountAmount.toLocaleString()}đ)</p>`;
@@ -192,10 +188,8 @@ export async function POST(req: Request) {
             await transporter.sendMail(mailOptions);
         }
 
-        // B. GỬI ZALO (Code cũ giữ nguyên)
-        if (ZALO_CONFIG.accessToken && formattedPhone) {
-             console.log("🚀 (Zalo Integration) Kích hoạt gửi Zalo...");
-             // Logic Zalo của bạn ở đây...
+        if (ZALO_CONFIG.accessToken && phone) {
+             // Logic Zalo giữ nguyên
         }
 
       } catch (notifyError) {
@@ -204,12 +198,11 @@ export async function POST(req: Request) {
     })();
 
 
-    // --- BƯỚC 3: TẠO LINK THANH TOÁN ---
-    // Sử dụng giá cuối cùng (finalAmount) để thanh toán
+    // --- BƯỚC 3: TẠO LINK THANH TOÁN (GIỮ NGUYÊN) ---
     let paymentUrl = "";
     const orderId = orderData.id;
     const orderInfo = `Thanh toan don #${orderId}`;
-    const amountToPay = finalAmount; // ⚠️ Quan trọng: Thanh toán số tiền sau giảm
+    const amountToPay = finalAmount;
 
     switch (paymentMethod) {
       case "COD":

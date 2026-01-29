@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+// Đảm bảo file data này tồn tại trong dự án của bạn
 import {
   TPCN_DATA,
   DMP_DATA,
@@ -22,7 +23,7 @@ const CATEGORY_OPTIONS: any = {
 export default function EditProductPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>; // Cập nhật type cho Next.js mới nhất
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -45,101 +46,118 @@ export default function EditProductPage({
     manufacturer: "",
     ingredients: "",
     expiry: "",
-    is_best_seller: false, // <--- ĐÃ SỬA: Khớp tên cột trong DB
+    is_best_seller: false,
   });
 
-  // --- [QUAN TRỌNG] STATE QUẢN LÝ DANH SÁCH ẢNH (Mảng) ---
+  // --- STATE QUẢN LÝ ẢNH & DANH MỤC CON ---
   const [images, setImages] = useState<string[]>([]);
   const [subOptions, setSubOptions] = useState<any[]>([]);
 
   // --- 1. Lấy dữ liệu cũ ---
   useEffect(() => {
     const fetchProduct = async () => {
-      const { id } = await params;
+      try {
+        // Unwrap params (xử lý bất đồng bộ cho Next.js 15+)
+        const resolvedParams = await params;
+        const id = resolvedParams.id;
 
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .single();
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-      if (error) {
-        alert("Không tìm thấy sản phẩm!");
-        router.push("/admin/products");
-        return;
-      }
-
-      if (data) {
-        // Xử lý danh mục phụ
-        let subs = [];
-        if (data.sub_category) {
-          subs = data.sub_category.split(",").map((s: string) => s.trim());
+        if (error) {
+          throw error;
         }
 
-        // --- XỬ LÝ ẢNH CŨ (Chuyển về mảng) ---
-        let loadedImages: string[] = [];
-        if (data.img) {
-          try {
-            const parsed = JSON.parse(data.img);
-            if (Array.isArray(parsed)) {
-              loadedImages = parsed;
+        if (data) {
+          // Xử lý danh mục phụ (String -> Array)
+          let subs: string[] = [];
+          if (data.sub_category) {
+            // Kiểm tra nếu là chuỗi JSON mảng hoặc chuỗi phân tách bằng dấu phẩy
+            if (data.sub_category.startsWith("[")) {
+               try {
+                  subs = JSON.parse(data.sub_category);
+               } catch {
+                  subs = [];
+               }
             } else {
+               subs = data.sub_category.split(",").map((s: string) => s.trim());
+            }
+          }
+
+          // --- XỬ LÝ ẢNH CŨ (Chuyển về mảng) ---
+          let loadedImages: string[] = [];
+          if (data.img) {
+            try {
+              if (data.img.startsWith("[")) {
+                const parsed = JSON.parse(data.img);
+                loadedImages = Array.isArray(parsed) ? parsed : [data.img];
+              } else {
+                loadedImages = [data.img];
+              }
+            } catch {
               loadedImages = [data.img];
             }
-          } catch {
-            loadedImages = [data.img];
+          }
+          setImages(loadedImages);
+
+          // Đổ dữ liệu vào Form
+          setFormData({
+            title: data.title || "",
+            price: data.price || "",
+            old_price: data.old_price || "",
+            category: data.category || "", // Lưu ý: Cột này trong DB phải là 'category', nếu DB là 'category_id' thì sửa ở đây
+            sub_category: subs,
+            brand: data.brand || "",
+            origin: data.origin || "",
+            unit: data.unit || "",
+            description: data.description || "",
+            registration_no: data.registration_no || "",
+            dosage_form: data.dosage_form || "",
+            specification: data.specification || "",
+            manufacturer: data.manufacturer || "",
+            ingredients: data.ingredients || "",
+            expiry: data.expiry || "",
+            is_best_seller: data.is_best_seller || false,
+          });
+
+          // Load danh mục con tương ứng với danh mục lớn đã lưu
+          if (data.category && CATEGORY_OPTIONS[data.category]) {
+            const groupData = CATEGORY_OPTIONS[data.category];
+            let items: any[] = [];
+            Object.values(groupData).forEach((group: any) => {
+              if (group.items) {
+                group.items.forEach((item: any) => {
+                  if (item.children && item.children.length > 0) {
+                    items = [...items, ...item.children];
+                  } else {
+                    items.push(item);
+                  }
+                });
+              }
+            });
+            // Lọc trùng
+            const uniqueItems = Array.from(
+              new Set(items.map((i) => i.title))
+            ).map((title) => items.find((i) => i.title === title));
+            setSubOptions(uniqueItems);
           }
         }
-        setImages(loadedImages);
-
-        // Đổ dữ liệu vào Form
-        setFormData({
-          title: data.title || "",
-          price: data.price || "",
-          old_price: data.old_price || "",
-          category: data.category || "",
-          sub_category: subs,
-          brand: data.brand || "",
-          origin: data.origin || "",
-          unit: data.unit || "",
-          description: data.description || "",
-          registration_no: data.registration_no || "",
-          dosage_form: data.dosage_form || "",
-          specification: data.specification || "",
-          manufacturer: data.manufacturer || "",
-          ingredients: data.ingredients || "",
-          expiry: data.expiry || "",
-          is_best_seller: data.is_best_seller || false, // <--- ĐÃ SỬA: Lấy từ cột is_best_seller
-        });
-
-        // Load danh mục con
-        if (data.category && CATEGORY_OPTIONS[data.category]) {
-          const groupData = CATEGORY_OPTIONS[data.category];
-          let items: any[] = [];
-          Object.values(groupData).forEach((group: any) => {
-            if (group.items) {
-              group.items.forEach((item: any) => {
-                if (item.children && item.children.length > 0) {
-                  items = [...items, ...item.children];
-                } else {
-                  items.push(item);
-                }
-              });
-            }
-          });
-          const uniqueItems = Array.from(
-            new Set(items.map((i) => i.title))
-          ).map((title) => items.find((i) => i.title === title));
-          setSubOptions(uniqueItems);
-        }
+      } catch (error) {
+        console.error("Lỗi tải sản phẩm:", error);
+        alert("Không tìm thấy sản phẩm hoặc lỗi kết nối!");
+        router.push("/admin/products");
+      } finally {
+        setFetching(false);
       }
-      setFetching(false);
     };
 
     fetchProduct();
   }, [params, router]);
 
-  // --- Logic Danh mục ---
+  // --- Logic thay đổi Danh mục lớn ---
   const handleCategoryChange = (e: any) => {
     const selectedCat = e.target.value;
     setFormData({ ...formData, category: selectedCat, sub_category: [] });
@@ -167,6 +185,7 @@ export default function EditProductPage({
     }
   };
 
+  // --- Logic chọn Danh mục con (Checkbox) ---
   const handleSubCategoryChange = (subTitle: string) => {
     setFormData((prev) => {
       const currentSubs = prev.sub_category;
@@ -181,7 +200,7 @@ export default function EditProductPage({
     });
   };
 
-  // --- HÀM XỬ LÝ NHIỀU ẢNH ---
+  // --- XỬ LÝ ẢNH (Base64) ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -194,6 +213,12 @@ export default function EditProductPage({
     const newImages: string[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      // Kiểm tra kích thước ảnh (ví dụ giới hạn 2MB để tránh lỗi Supabase Payload quá lớn)
+      if (file.size > 2 * 1024 * 1024) {
+          alert(`Ảnh ${file.name} quá lớn (>2MB). Vui lòng chọn ảnh nhỏ hơn.`);
+          continue;
+      }
+
       const base64 = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -213,17 +238,24 @@ export default function EditProductPage({
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { id } = await params;
-
+    
     try {
+      const resolvedParams = await params;
+      const id = resolvedParams.id;
+
+      // Chuyển mảng sub_category thành chuỗi để lưu vào DB (nếu DB lưu text)
       const subCategoryString = formData.sub_category.join(", ");
+      
+      // Chuyển mảng ảnh thành chuỗi JSON
       const imgJsonString = JSON.stringify(images);
 
-      // Payload bây giờ sẽ chứa key 'is_best_seller' khớp với DB
       const payload = {
         ...formData,
         img: imgJsonString,
         sub_category: subCategoryString,
+        // Đảm bảo convert giá sang số
+        price: Number(formData.price),
+        old_price: formData.old_price ? Number(formData.old_price) : 0,
       };
 
       const { error } = await supabase
@@ -234,8 +266,9 @@ export default function EditProductPage({
       if (error) throw error;
 
       alert("✅ Cập nhật thành công!");
-      router.push("/admin/products");
+      router.push("/admin/activity"); // Quay lại trang nhật ký hoặc danh sách SP
     } catch (error: any) {
+      console.error(error);
       alert("Lỗi cập nhật: " + error.message);
     } finally {
       setLoading(false);
@@ -243,17 +276,17 @@ export default function EditProductPage({
   };
 
   if (fetching)
-    return <div className="p-10 text-center">Đang tải dữ liệu...</div>;
+    return <div className="p-10 text-center text-gray-500">Đang tải dữ liệu...</div>;
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-8 border border-gray-200">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-yellow-600">
+          <h1 className="text-2xl font-bold text-yellow-600 uppercase flex items-center gap-2">
             ✏️ CHỈNH SỬA SẢN PHẨM
           </h1>
           <Link
-            href="/admin/products"
+            href="/admin/activity"
             className="text-sm text-gray-500 hover:text-blue-600 underline"
           >
             ← Hủy bỏ
@@ -268,7 +301,7 @@ export default function EditProductPage({
             </label>
             <input
               type="text"
-              className="w-full p-3 border rounded-lg"
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-400 outline-none"
               value={formData.title}
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
@@ -277,16 +310,15 @@ export default function EditProductPage({
             />
           </div>
 
-          {/* --- CHECKBOX BÁN CHẠY (ĐÃ SỬA) --- */}
+          {/* --- CHECKBOX BÁN CHẠY --- */}
           <div className="flex items-center p-3 bg-red-50 border border-red-100 rounded-lg">
             <input
               id="bestseller-check"
               type="checkbox"
               className="w-5 h-5 text-red-600 focus:ring-red-500 border-gray-300 rounded cursor-pointer"
-              checked={formData.is_best_seller} // ĐÃ SỬA
-              onChange={
-                (e) =>
-                  setFormData({ ...formData, is_best_seller: e.target.checked }) // ĐÃ SỬA
+              checked={formData.is_best_seller}
+              onChange={(e) =>
+                setFormData({ ...formData, is_best_seller: e.target.checked })
               }
             />
             <label
@@ -307,7 +339,7 @@ export default function EditProductPage({
               {images.map((imgSrc, index) => (
                 <div
                   key={index}
-                  className="relative w-full h-24 border rounded-lg overflow-hidden group"
+                  className="relative w-full h-24 border rounded-lg overflow-hidden group bg-gray-50"
                 >
                   <img
                     src={imgSrc}
@@ -317,7 +349,7 @@ export default function EditProductPage({
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-80 hover:opacity-100"
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-80 hover:opacity-100 transition"
                   >
                     ✕
                   </button>
@@ -325,7 +357,7 @@ export default function EditProductPage({
               ))}
 
               {images.length < 6 && (
-                <label className="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 h-24 text-gray-400">
+                <label className="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 h-24 text-gray-400 transition">
                   <span className="text-2xl">+</span>
                   <span className="text-xs">Thêm ảnh</span>
                   <input
@@ -347,7 +379,7 @@ export default function EditProductPage({
                 1. Danh Mục Lớn
               </label>
               <select
-                className="w-full p-3 border rounded-lg bg-white"
+                className="w-full p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-300 outline-none"
                 value={formData.category}
                 onChange={handleCategoryChange}
                 required
@@ -369,7 +401,7 @@ export default function EditProductPage({
                   subOptions.map((item, idx) => (
                     <label
                       key={idx}
-                      className="flex items-start space-x-2 cursor-pointer hover:bg-blue-50 p-1"
+                      className="flex items-start space-x-2 cursor-pointer hover:bg-blue-50 p-1 rounded"
                     >
                       <input
                         type="checkbox"
@@ -382,8 +414,8 @@ export default function EditProductPage({
                     </label>
                   ))
                 ) : (
-                  <div className="col-span-3 text-gray-500 text-sm">
-                    Vui lòng chọn danh mục lớn
+                  <div className="col-span-3 text-center text-gray-500 text-sm py-4">
+                    {formData.category ? "Không có mục con" : "Vui lòng chọn danh mục lớn trước"}
                   </div>
                 )}
               </div>
@@ -393,9 +425,9 @@ export default function EditProductPage({
           {/* Giá cả */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-bold mb-1">Giá bán</label>
+              <label className="block text-sm font-bold mb-1">Giá bán (VNĐ)</label>
               <input
-                type="text"
+                type="number"
                 className="w-full p-3 border rounded-lg"
                 value={formData.price}
                 onChange={(e) =>
@@ -405,9 +437,9 @@ export default function EditProductPage({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold mb-1">Giá cũ</label>
+              <label className="block text-sm font-bold mb-1 text-gray-500">Giá cũ</label>
               <input
-                type="text"
+                type="number"
                 className="w-full p-3 border rounded-lg"
                 value={formData.old_price}
                 onChange={(e) =>
@@ -416,7 +448,7 @@ export default function EditProductPage({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold mb-1">Đơn vị</label>
+              <label className="block text-sm font-bold mb-1">Đơn vị (Hộp/Vỉ)</label>
               <input
                 type="text"
                 className="w-full p-3 border rounded-lg"
@@ -493,7 +525,7 @@ export default function EditProductPage({
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">
-                  Quy cách
+                  Quy cách đóng gói
                 </label>
                 <input
                   type="text"
@@ -547,7 +579,7 @@ export default function EditProductPage({
 
           {/* Mô tả */}
           <div>
-            <label className="block text-sm font-bold mb-1">Mô tả</label>
+            <label className="block text-sm font-bold mb-1">Mô tả sản phẩm</label>
             <textarea
               className="w-full p-3 border rounded-lg h-32"
               value={formData.description}
@@ -562,7 +594,7 @@ export default function EditProductPage({
             disabled={loading}
             className={`w-full py-4 rounded-lg font-bold text-white text-lg transition ${
               loading
-                ? "bg-gray-400"
+                ? "bg-gray-400 cursor-not-allowed"
                 : "bg-yellow-500 hover:bg-yellow-600 shadow-lg"
             }`}
           >

@@ -10,6 +10,9 @@ import { GridItem, SmallItem } from "./sub-components";
 import SearchBar from "./header/SearchBar";
 import { NAV_ITEMS, BENH_SIDEBAR } from "./header/constants";
 
+// 👇 IMPORT COMPONENT MENU MỚI (DROPDOWN GIỐNG LONG CHÂU)
+import UserDropdown from "@/components/UserDropdown";
+
 // Import Data Thuốc để lấy ví dụ hiển thị
 import { THUOC_DATA } from "@/components/data";
 
@@ -30,6 +33,8 @@ export default function Header() {
   }, []);
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+  
+  // Hàm này giữ lại để dùng cho Mobile Menu (Menu điện thoại)
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -164,17 +169,8 @@ export default function Header() {
         {/* USER INFO & CART */}
         <div className="flex items-center gap-6">
           {user ? (
-            <div className="flex flex-col items-end text-xs">
-              <span className="font-bold text-blue-800">
-                Chào, {user.email?.split("@")[0]}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="text-gray-500 hover:text-red-600 hover:underline opacity-80"
-              >
-                Đăng xuất
-              </button>
-            </div>
+            // 👇 THAY ĐỔI Ở ĐÂY: SỬ DỤNG COMPONENT MỚI
+            <UserDropdown user={user} />
           ) : (
             <Link
               href="/login"
