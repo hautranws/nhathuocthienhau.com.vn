@@ -51,7 +51,7 @@ export default function SyncPricesPage() {
         if (error) throw error;
 
         if (data && data.length > 0) {
-          allProducts = [...allProducts, ...data];
+          allProducts = [...allProducts, ...(data as ProductDB[])];
           page++;
         } else {
           hasMore = false;
@@ -162,11 +162,11 @@ export default function SyncPricesPage() {
         const chunk = uniqueSkus.slice(i, i + chunkSize);
         const { data: chunkData, error } = await supabase
           .from("products")
-          .select("id, sku, variant, title, price")
+          .select("id, sku, variant, title, price, category")
           .in("sku", chunk);
 
         if (error) throw error;
-        if (chunkData) dbProducts = [...dbProducts, ...chunkData];
+        if (chunkData) dbProducts = [...dbProducts, ...(chunkData as ProductDB[])];
       }
 
       // Bước 3: Tạo mảng Preview ghép giữa Excel và DB
