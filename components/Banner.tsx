@@ -32,10 +32,12 @@ export default function Banner() {
         .from("banners")
         .select("*")
         .eq("active", true) // Chỉ lấy banner đang bật
-        .order("created_at", { ascending: false }); // Lấy mới nhất trước
+        .order("id", { ascending: false }); // Sắp xếp theo id thay vì created_at để tránh lỗi thiếu cột
 
       if (!error && data && data.length > 0) {
         setSlides(data);
+      } else if (error) {
+        console.error("Lỗi lấy danh sách banner:", error);
       }
     };
 
@@ -48,7 +50,7 @@ export default function Banner() {
 
     const timer = setInterval(() => {
       setCurrentIndex((prevIndex) =>
-        prevIndex === slides.length - 1 ? 0 : prevIndex + 1
+        prevIndex === slides.length - 1 ? 0 : prevIndex + 1,
       );
     }, 4000); // 4 giây chuyển 1 lần
 
@@ -58,10 +60,11 @@ export default function Banner() {
   if (slides.length === 0) return null;
 
   return (
-    <div className="w-full h-48 md:h-[400px] relative overflow-hidden rounded-xl shadow-lg group">
+    <div className="w-full aspect-[1610/492] relative overflow-hidden rounded-xl shadow-lg group">
       {/* Hiển thị ảnh */}
       <div
-        className="w-full h-full bg-center bg-cover duration-700 transition-all ease-in-out"
+        // Sử dụng aspect-ratio tỷ lệ chuẩn của ảnh, nên dùng bg-cover sẽ khít hoàn toàn
+        className="w-full h-full bg-center bg-cover bg-no-repeat duration-700 transition-all ease-in-out"
         style={{ backgroundImage: `url(${slides[currentIndex].image_url})` }}
       ></div>
 
@@ -70,7 +73,7 @@ export default function Banner() {
         <button
           onClick={() =>
             setCurrentIndex(
-              currentIndex === 0 ? slides.length - 1 : currentIndex - 1
+              currentIndex === 0 ? slides.length - 1 : currentIndex - 1,
             )
           }
         >
@@ -83,7 +86,7 @@ export default function Banner() {
         <button
           onClick={() =>
             setCurrentIndex(
-              currentIndex === slides.length - 1 ? 0 : currentIndex + 1
+              currentIndex === slides.length - 1 ? 0 : currentIndex + 1,
             )
           }
         >

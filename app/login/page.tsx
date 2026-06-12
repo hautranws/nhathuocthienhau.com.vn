@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const ADMIN_EMAIL = "admin@thienhau.com";
+const ADMIN_EMAIL = "tranthienhaudau2@gmail.com";
 const ADMIN_PHONE_CORE = "989217112"; // 9 số cuối của SĐT Admin
 
 export default function LoginPage() {

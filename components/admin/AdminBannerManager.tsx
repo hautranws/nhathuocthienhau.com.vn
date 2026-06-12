@@ -42,19 +42,19 @@ export default function AdminBannerManager() {
       // 1. Tạo tên file duy nhất (tránh trùng tên)
       const fileName = `banner-${Date.now()}-${file.name.replace(
         /[^a-zA-Z0-9.]/g,
-        "_"
+        "_",
       )}`;
 
-      // 2. Upload lên Supabase Storage (Bucket tên là "banners")
+      // 2. Upload lên Supabase Storage (Bucket tên là "bannerthienhau")
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("banners") // <--- Đảm bảo bạn đã tạo bucket này trên Supabase
+        .from("bannerthienhau") // <--- Đảm bảo bạn đã tạo bucket này trên Supabase
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       // 3. Lấy link ảnh công khai (Public URL)
       const { data: publicUrlData } = supabase.storage
-        .from("banners")
+        .from("bannerthienhau")
         .getPublicUrl(fileName);
 
       const finalUrl = publicUrlData.publicUrl;
@@ -71,7 +71,7 @@ export default function AdminBannerManager() {
     } catch (error: any) {
       console.error(error);
       alert(
-        "❌ Lỗi upload: " + (error.message || "Vui lòng kiểm tra lại Storage")
+        "❌ Lỗi upload: " + (error.message || "Vui lòng kiểm tra lại Storage"),
       );
     } finally {
       setUploading(false);
@@ -116,34 +116,30 @@ export default function AdminBannerManager() {
         </ul>
       </div>
 
-      {/* --- KHU VỰC UPLOAD (MỚI) --- */}
-      <div className="mb-8 p-6 border-2 border-dashed border-blue-300 rounded-xl bg-blue-50 text-center hover:bg-blue-100 transition relative">
-        {uploading ? (
-          <div className="flex flex-col items-center justify-center text-blue-600">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-            <p className="font-bold">Đang tải ảnh lên máy chủ...</p>
+      {/* --- KHU VỰC UPLOAD TRUYỀN THỐNG --- */}
+      <div className="mb-8 p-6 border border-blue-200 rounded-xl bg-blue-50 shadow-sm">
+        <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
+          ➕ Thêm Banner mới
+        </h3>
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleUploadBanner}
+            disabled={uploading}
+            className="block w-full text-sm text-gray-500
+              file:mr-4 file:py-3 file:px-6
+              file:rounded-full file:border-0
+              file:text-sm file:font-bold
+              file:bg-blue-600 file:text-white
+              hover:file:bg-blue-700 cursor-pointer transition"
+          />
+        </div>
+        {uploading && (
+          <div className="mt-4 flex items-center gap-2 text-blue-600 font-bold text-sm bg-white p-3 rounded-lg border border-blue-100 inline-flex">
+            <span className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></span>
+            Đang xử lý và tải ảnh lên Supabase...
           </div>
-        ) : (
-          <>
-            <p className="text-blue-900 font-bold text-lg mb-2">
-              📂 Bấm vào đây để chọn ảnh Banner
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              (Hoặc kéo thả ảnh vào khung này)
-            </p>
-
-            {/* Input file ẩn, phủ lên toàn bộ khung */}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleUploadBanner}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-blue-700 pointer-events-none">
-              Chọn ảnh từ máy tính
-            </button>
-          </>
         )}
       </div>
 

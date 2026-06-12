@@ -32,8 +32,8 @@ export default function InventoryPage() {
     // 1. Lấy tổng số lượng để tính số trang
     const { count } = await supabase
       .from("products")
-      .select("*", { count: "exact", head: true });
-    
+      .select("*", { count: "estimated", head: true });
+
     setTotalProducts(count || 0);
 
     // 2. Tính toán phân đoạn (Pagination Range)
@@ -55,12 +55,15 @@ export default function InventoryPage() {
     setLoading(false);
   };
 
-  // Hàm cập nhật nhanh (Optimistic UI) - GIỮ NGUYÊN
-  const handleUpdate = async (id: number, field: string, value: any) => {
+  // Hàm cập nhật state nội bộ khi đang gõ (không gọi API)
+  const handleUpdateLocal = (id: number, field: string, value: any) => {
     setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
     );
+  };
 
+  // Hàm gửi API lên Supabase (Chỉ gọi khi gõ xong / OnBlur / Enter)
+  const handleUpdateDB = async (id: number, field: string, value: any) => {
     const { error } = await supabase
       .from("products")
       .update({ [field]: value })
@@ -94,7 +97,7 @@ export default function InventoryPage() {
 
   // Lọc sản phẩm theo tên - GIỮ NGUYÊN (Tìm trong trang hiện tại)
   const filteredProducts = products.filter((p) =>
-    (p.title || p.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+    (p.title || p.name || "").toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // --- [CODE MỚI] Tính tổng số trang ---
@@ -105,10 +108,15 @@ export default function InventoryPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header - GIỮ NGUYÊN */}
         <div className="flex justify-between items-center mb-6">
-          <Link href="/admin" className="text-blue-600 hover:underline flex items-center gap-2">
+          <Link
+            href="/admin"
+            className="text-blue-600 hover:underline flex items-center gap-2"
+          >
             <span>🔙</span> Quay lại Dashboard
           </Link>
-          <h1 className="text-3xl font-bold text-gray-800">📦 Quản Lý Kho Hàng</h1>
+          <h1 className="text-3xl font-bold text-gray-800">
+            📦 Quản Lý Kho Hàng
+          </h1>
         </div>
 
         {/* Thanh tìm kiếm - GIỮ NGUYÊN */}
@@ -131,7 +139,9 @@ export default function InventoryPage() {
                   <th className="p-4 border-b w-16">ID</th>
                   <th className="p-4 border-b w-24">Hình ảnh</th>
                   <th className="p-4 border-b">Tên sản phẩm</th>
-                  <th className="p-4 border-b text-center w-32">Giá bán (VNĐ)</th>
+                  <th className="p-4 border-b text-center w-32">
+                    Giá bán (VNĐ)
+                  </th>
                   <th className="p-4 border-b text-center w-24">Tồn kho</th>
                   <th className="p-4 border-b text-right w-24">Hành động</th>
                 </tr>
@@ -151,14 +161,19 @@ export default function InventoryPage() {
                   </tr>
                 ) : (
                   filteredProducts.map((product) => (
-                    <tr key={product.id} className="hover:bg-blue-50 transition duration-150">
+                    <tr
+                      key={product.id}
+                      className="hover:bg-blue-50 transition duration-150"
+                    >
                       <td className="p-4 text-gray-500 font-mono text-xs">
                         #{product.id}
                       </td>
                       <td className="p-4">
                         <div className="w-12 h-12 border rounded bg-white flex items-center justify-center overflow-hidden relative">
                           <img
-                            src={getProductImage(product.img || product.image_url)}
+                            src={getProductImage(
+                              product.img || product.image_url,
+                            )}
                             className="w-full h-full object-contain"
                             alt="sp"
                             loading="lazy"
@@ -179,20 +194,54 @@ export default function InventoryPage() {
                           className="w-full p-2 border rounded text-right focus:border-blue-500 outline-none focus:ring-1 focus:ring-blue-200 font-semibold text-gray-700"
                           value={product.price}
                           onChange={(e) =>
-                            handleUpdate(product.id, "price", Number(e.target.value))
+                            handleUpdateLocal(
+                              product.id,
+                              "price",
+                              Number(e.target.value),
+                            )
                           }
+                          onBlur={(e) =>
+                            handleUpdateDB(
+                              product.id,
+                              "price",
+                              Number(e.target.value),
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              (e.target as HTMLInputElement).blur(); // Tự nhả focus khi ấn Enter
+                            }
+                          }}
                         />
                       </td>
                       <td className="p-4 text-center">
                         <input
                           type="number"
                           className={`w-full p-2 border rounded text-center focus:border-blue-500 outline-none focus:ring-1 focus:ring-blue-200 font-bold ${
-                            (product.quantity || 0) < 10 ? "text-red-600 bg-red-50" : "text-gray-700"
+                            (product.quantity || 0) < 10
+                              ? "text-red-600 bg-red-50"
+                              : "text-gray-700"
                           }`}
                           value={product.quantity || 0}
                           onChange={(e) =>
-                            handleUpdate(product.id, "quantity", Number(e.target.value))
+                            handleUpdateLocal(
+                              product.id,
+                              "quantity",
+                              Number(e.target.value),
+                            )
                           }
+                          onBlur={(e) =>
+                            handleUpdateDB(
+                              product.id,
+                              "quantity",
+                              Number(e.target.value),
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              (e.target as HTMLInputElement).blur(); // Tự nhả focus khi ấn Enter
+                            }
+                          }}
                         />
                       </td>
                       <td className="p-4 text-right">
@@ -216,58 +265,69 @@ export default function InventoryPage() {
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-gray-700">
-                    Hiển thị <span className="font-medium">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> đến{" "}
+                    Hiển thị{" "}
+                    <span className="font-medium">
+                      {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                    </span>{" "}
+                    đến{" "}
                     <span className="font-medium">
                       {Math.min(currentPage * ITEMS_PER_PAGE, totalProducts)}
                     </span>{" "}
-                    trong tổng số <span className="font-medium">{totalProducts}</span> kết quả
+                    trong tổng số{" "}
+                    <span className="font-medium">{totalProducts}</span> kết quả
                   </p>
                 </div>
                 <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <nav
+                    className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                    aria-label="Pagination"
+                  >
                     {/* Nút Trước */}
                     <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
                       disabled={currentPage === 1}
-                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${currentPage === 1 ? "text-gray-300 cursor-not-allowed" : "text-gray-500 hover:bg-gray-50"}`}
                     >
-                      <span className="sr-only">Previous</span>
-                      ◀ Trước
+                      <span className="sr-only">Previous</span>◀ Trước
                     </button>
-                    
+
                     {/* Hiển thị số trang */}
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        // Logic hiển thị dải trang thông minh (Luôn hiện trang hiện tại ở giữa)
-                        let pageNum = currentPage - 2 + i;
-                        if (currentPage <= 3) pageNum = i + 1;
-                        if (currentPage > totalPages - 2) pageNum = totalPages - 4 + i;
-                        
-                        if (pageNum > 0 && pageNum <= totalPages) {
-                            return (
-                                <button
-                                key={pageNum}
-                                onClick={() => setCurrentPage(pageNum)}
-                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                    currentPage === pageNum
-                                    ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                                    : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                                }`}
-                                >
-                                {pageNum}
-                                </button>
-                            );
-                        }
-                        return null;
+                      // Logic hiển thị dải trang thông minh (Luôn hiện trang hiện tại ở giữa)
+                      let pageNum = currentPage - 2 + i;
+                      if (currentPage <= 3) pageNum = i + 1;
+                      if (currentPage > totalPages - 2)
+                        pageNum = totalPages - 4 + i;
+
+                      if (pageNum > 0 && pageNum <= totalPages) {
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              currentPage === pageNum
+                                ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      }
+                      return null;
                     })}
 
                     {/* Nút Sau */}
                     <button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
                       disabled={currentPage === totalPages}
-                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${currentPage === totalPages ? "text-gray-300 cursor-not-allowed" : "text-gray-500 hover:bg-gray-50"}`}
                     >
-                      Sau ▶
-                      <span className="sr-only">Next</span>
+                      Sau ▶<span className="sr-only">Next</span>
                     </button>
                   </nav>
                 </div>

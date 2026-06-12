@@ -7,9 +7,10 @@ import CategoryGrid from "@/components/CategoryGrid";
 import ProductCard from "@/components/ProductCard";
 import BestSellerSection from "@/components/BestSellerSection";
 
-// 👇 [QUAN TRỌNG] THÊM DÒNG NÀY ĐỂ SỬA LỖI BUILD
-// Nó giúp trang web luôn lấy dữ liệu mới nhất và không bị lỗi khi deploy
-export const dynamic = "force-dynamic";
+// Sử dụng ISR (Incremental Static Regeneration) thay vì force-dynamic
+// Next.js sẽ lưu cache trang chủ trong 60 giây. Ngăn chặn 1000 user
+// truy cập tạo ra hàng ngàn query làm sập Database.
+export const revalidate = 60;
 
 export default async function Home() {
   // 1. Lấy tất cả sản phẩm
