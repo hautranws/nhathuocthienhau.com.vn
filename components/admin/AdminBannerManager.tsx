@@ -16,7 +16,7 @@ export default function AdminBannerManager() {
   // Lấy danh sách banner
   const fetchBanners = async () => {
     const { data } = await supabase
-      .from("banners")
+      .from("banners_thienhau")
       .select("*")
       .order("id", { ascending: false });
     if (data) setBanners(data);
@@ -61,7 +61,7 @@ export default function AdminBannerManager() {
 
       // 4. Lưu link vào Database
       const { error: dbError } = await supabase
-        .from("banners")
+        .from("banners_thienhau")
         .insert([{ image_url: finalUrl, active: true }]);
 
       if (dbError) throw dbError;
@@ -83,14 +83,17 @@ export default function AdminBannerManager() {
   // Xóa banner (Xóa cả trong DB và Storage nếu cần - ở đây xóa DB trước)
   const handleDeleteBanner = async (id: number) => {
     if (!confirm("Bạn chắc chắn muốn xóa banner này?")) return;
-    const { error } = await supabase.from("banners").delete().eq("id", id);
+    const { error } = await supabase
+      .from("banners_thienhau")
+      .delete()
+      .eq("id", id);
     if (!error) fetchBanners();
   };
 
   // Bật/Tắt banner
   const handleToggleActive = async (id: number, currentStatus: boolean) => {
     await supabase
-      .from("banners")
+      .from("banners_thienhau")
       .update({ active: !currentStatus })
       .eq("id", id);
     fetchBanners();

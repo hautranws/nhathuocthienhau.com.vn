@@ -29,7 +29,7 @@ export default function Banner() {
   useEffect(() => {
     const fetchBanners = async () => {
       const { data, error } = await supabase
-        .from("banners")
+        .from("banners_thienhau")
         .select("*")
         .eq("active", true) // Chỉ lấy banner đang bật
         .order("id", { ascending: false }); // Sắp xếp theo id thay vì created_at để tránh lỗi thiếu cột
