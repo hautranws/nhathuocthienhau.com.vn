@@ -33,15 +33,25 @@ export default function ManageSkuPage() {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      // Gộp lệnh đếm và lấy dữ liệu thành 1, đổi count sang "estimated" để tránh lỗi sập DB/Timeout
-      const { data, count, error } = await supabase
+      // Gộp lệnh đếm và lấy dữ liệu thành 1
+      // Sử dụng count: "exact" để có con số chính xác khi nhiều người cùng làm việc
+      const { data, count, error, status } = await supabase
         .from("products")
-        .select("id, title, category, price, sku", { count: "estimated" })
+        .select("id, title, category, price, sku", { count: "exact" })
         .or("sku.is.null,sku.eq.") // Lấy cả những sản phẩm có SKU là chuỗi rỗng
         .order("id", { ascending: false })
         .range(from, to);
 
-      if (error) throw error;
+      if (error) {
+        // Xử lý lỗi 416 (Requested Range Not Satisfiable) khi nhiều người cập nhật làm giảm tổng số sản phẩm
+        if (status === 416 || error.code === "PGRST103") {
+          if (currentPage > 1) {
+            setCurrentPage(1);
+            return;
+          }
+        }
+        throw error;
+      }
 
       setTotalProducts(count || 0);
 
@@ -247,7 +257,7 @@ export default function ManageSkuPage() {
                 </span>
                 <button
                   onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev - 1, totalPages))
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                   }
                   disabled={currentPage === totalPages || totalPages === 0}
                   className={`px-4 py-2 border rounded-lg text-sm font-bold ${
