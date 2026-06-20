@@ -130,7 +130,7 @@ export default async function ProductDetail(props: {
                     Rx - Thuốc kê đơn
                   </span>
                 )}
-                {product.title || product.name}
+                {product.title }
               </h1>
 
               <div className="flex items-center gap-4 mt-3 text-sm">
