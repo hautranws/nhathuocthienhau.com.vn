@@ -11,7 +11,7 @@ export default async function SearchPage({
   const query = (resolvedSearchParams.q || "").toString().trim();
 
   // 1. Lấy sản phẩm ban đầu
-  let initialProducts = [];
+  let initialProducts: any[] = [];
   if (query) {
     const { data } = await supabase
       .from("products")
