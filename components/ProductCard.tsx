@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import Link from "next/link";
+import Image from "next/image"; // Thêm thư viện Image tối ưu của Next.js
 import { useCart } from "@/context/CartContext";
 
 interface ProductProps {
@@ -31,11 +32,14 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-4 flex flex-col h-full relative group">
       {/* Link đã chốt chuẩn là /product/ */}
       <Link href={`/product/${product.id}`} className="block mb-3">
-        <div className="w-full aspect-square flex items-center justify-center overflow-hidden rounded-lg cursor-pointer">
-          <img
+        {/* Thêm class 'relative' vào div bao ngoài để dùng được thuộc tính 'fill' của Next Image */}
+        <div className="w-full aspect-square relative flex items-center justify-center overflow-hidden rounded-lg cursor-pointer">
+          <Image
             src={getThumbnail(product.img)}
             alt={product.title}
-            className="object-contain w-full h-full group-hover:scale-105 transition-transform duration-300"
+            fill // Thuộc tính giúp ảnh lấp đầy div cha mà không làm vỡ khung
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw" // Phân bổ size thông minh để tiết kiệm data
+            className="object-contain group-hover:scale-105 transition-transform duration-300"
           />
         </div>
       </Link>
