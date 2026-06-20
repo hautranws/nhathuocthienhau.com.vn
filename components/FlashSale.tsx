@@ -27,38 +27,41 @@ export default function FlashSale() {
   // --- 1. LẤY DỮ LIỆU TỪ SUPABASE & LỌC THEO GIỜ ---
   useEffect(() => {
     const fetchFlashSaleProducts = async () => {
-      const now = new Date().toISOString(); // Lấy giờ hiện tại chuẩn ISO
+      try {
+        const now = new Date().toISOString();
 
-      // Lấy các sản phẩm đang bật cờ Flash Sale
-      // Logic lọc ngày giờ sẽ xử lý kỹ hơn ở phía dưới để đảm bảo timezone VN
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_flash_sale", true)
-        .limit(20);
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .eq("is_flash_sale", true)
+          .limit(20);
 
-      if (!error && data) {
-        const currentTime = new Date().getTime();
+        if (!error && data) {
+          const currentTime = new Date().getTime();
 
-        // Lọc sản phẩm: Phải nằm trong khung giờ Start và End
-        const activeProducts = data.filter((p: Product) => {
-          if (!p.flash_sale_start || !p.flash_sale_end) return false;
-          const start = new Date(p.flash_sale_start).getTime();
-          const end = new Date(p.flash_sale_end).getTime();
-          return currentTime >= start && currentTime <= end;
-        });
+          const activeProducts = data.filter((p: Product) => {
+            if (!p.flash_sale_start || !p.flash_sale_end) return false;
+            const start = new Date(p.flash_sale_start).getTime();
+            const end = new Date(p.flash_sale_end).getTime();
+            return currentTime >= start && currentTime <= end;
+          });
 
-        setProducts(activeProducts.slice(0, 4)); // Chỉ lấy 4 sp hiển thị trang chủ
+          setProducts(activeProducts.slice(0, 4));
 
-        // Nếu có sản phẩm, lấy thời gian kết thúc của sản phẩm đầu tiên làm mốc đếm ngược chung
-        if (activeProducts.length > 0) {
-          const firstProductEnd = new Date(
-            activeProducts[0].flash_sale_end
-          ).getTime();
-          setEndTime(firstProductEnd);
+          if (activeProducts.length > 0) {
+            const firstProductEnd = new Date(
+              activeProducts[0].flash_sale_end,
+            ).getTime();
+            setEndTime(firstProductEnd);
+          }
+        } else if (error) {
+          console.warn("FlashSale fetch error:", error);
         }
+      } catch (err) {
+        console.warn("FlashSale fetch exception:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchFlashSaleProducts();
@@ -138,7 +141,7 @@ export default function FlashSale() {
           const discountPercent =
             item.price > 0
               ? Math.round(
-                  ((item.price - item.flash_sale_price) / item.price) * 100
+                  ((item.price - item.flash_sale_price) / item.price) * 100,
                 )
               : 0;
 

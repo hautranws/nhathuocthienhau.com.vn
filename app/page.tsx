@@ -13,23 +13,53 @@ import BestSellerSection from "@/components/BestSellerSection";
 export const revalidate = 60;
 
 export default async function Home() {
+  let products: any[] | null = null;
+  let bestSellers: any[] | null = null;
+  let productsError: any = null;
+  let bestSellersError: any = null;
+
   // 1. Lấy tất cả sản phẩm
-  const { data: products, error } = await supabase
-    .from("products")
-    .select(
-      "id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price",
-    )
-    .order("id", { ascending: false })
-    .limit(20);
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select(
+        "id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price",
+      )
+      .order("id", { ascending: false })
+      .limit(20);
+
+    products = data;
+    if (error) {
+      console.warn("Lỗi lấy hàng:", error);
+      productsError = error;
+    }
+  } catch (err: any) {
+    console.warn("Lỗi lấy hàng (exception):", err?.message);
+    productsError = err;
+  }
 
   // 2. Lấy sản phẩm bán chạy
-  const { data: bestSellers } = await supabase
-    .from("products")
-    .select("*")
-    .eq("is_best_seller", true)
-    .limit(10);
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, title, price, old_price, img")
+      .eq("is_best_seller", true)
+      .limit(10);
 
-  if (error) console.error("Lỗi lấy hàng:", error);
+    bestSellers = data;
+    if (error) {
+      console.warn("Lỗi lấy best sellers:", error);
+      bestSellersError = error;
+    }
+  } catch (err: any) {
+    console.warn("Lỗi lấy best sellers (exception):", err?.message);
+    bestSellersError = err;
+  }
+
+  const productsList = products ?? [];
+  const bestSellersList = bestSellers ?? [];
+  const homepageError =
+    productsError?.message || bestSellersError?.message || null;
 
   return (
     // --- [SỬA LẠI]: Đảm bảo là bg-white (trắng tinh) ---
@@ -46,7 +76,7 @@ export default async function Home() {
         {/* --- GIAO DIỆN BÁN CHẠY --- */}
         <section className="mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-r from-red-600 to-orange-500 text-white">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-linear-to-r from-red-600 to-orange-500 text-white">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🔥</span>
                 <h2 className="text-xl font-bold uppercase">
@@ -63,8 +93,8 @@ export default async function Home() {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-0 divide-x divide-y divide-gray-100">
-              {bestSellers && bestSellers.length > 0 ? (
-                bestSellers.map((product) => (
+              {bestSellersList && bestSellersList.length > 0 ? (
+                bestSellersList.map((product) => (
                   // --- [ĐÃ SỬA CHỖ NÀY] Đổi /san-pham/ thành /product/ ---
                   <Link
                     href={`/product/${product.id}`}
@@ -82,7 +112,7 @@ export default async function Home() {
                         className="object-cover w-full h-full group-hover:scale-105 transition duration-300"
                       />
                     </div>
-                    <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-[40px] group-hover:text-blue-600">
+                    <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-10 group-hover:text-blue-600">
                       {product.title}
                     </h3>
                     <div className="mt-2">
@@ -117,17 +147,26 @@ export default async function Home() {
           Sản phẩm từ kho hàng (Realtime)
         </h2>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-          {products && products.length > 0 ? (
-            products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))
-          ) : (
-            <div className="col-span-2 md:col-span-4 text-center py-10 text-gray-500 bg-white rounded-lg">
-              <p>📭 Kho hàng đang trống hoặc chưa mở khóa RLS.</p>
-            </div>
-          )}
-        </div>
+        {homepageError ? (
+          <div className="col-span-2 md:col-span-4 text-center py-10 text-red-700 bg-red-50 rounded-lg border border-red-200">
+            <p className="font-semibold mb-2">
+              Không thể kết nối đến Supabase.
+            </p>
+            <p className="text-sm text-gray-600">{homepageError}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+            {productsList.length > 0 ? (
+              productsList.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))
+            ) : (
+              <div className="col-span-2 md:col-span-4 text-center py-10 text-gray-500 bg-white rounded-lg">
+                <p>📭 Kho hàng đang trống hoặc chưa mở khóa RLS.</p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

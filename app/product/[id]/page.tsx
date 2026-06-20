@@ -5,6 +5,8 @@ import ProductGallery from "@/components/ProductGallery";
 import ProductSpecs from "@/components/ProductSpecs";
 import AddToCartButton from "@/components/AddToCartButton";
 
+export const revalidate = 60;
+
 export default async function ProductDetail(props: {
   params: Promise<{ id: string }>;
 }) {
@@ -12,11 +14,28 @@ export default async function ProductDetail(props: {
   const id = params.id;
 
   // 1. Lấy dữ liệu sản phẩm
-  const { data: product, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("id", id)
-    .single();
+  let product = null;
+  let error = null;
+
+  try {
+    const { data, error: queryError } = await supabase
+      .from("products")
+      .select(
+        "id, title, category, sub_category, brand, flash_sale_start, flash_sale_end, is_flash_sale, is_prescription, price, old_price, flash_sale_price, discount, unit, specification, origin, manufacturer, expiry, indications, contraindications, description, img, ingredients, registration_no, dosage_form",
+      )
+      .eq("id", id)
+      .single();
+
+    product = data;
+    error = queryError;
+
+    if (queryError) {
+      console.warn(`Lỗi lấy sản phẩm ${id}:`, queryError);
+    }
+  } catch (err: any) {
+    console.warn(`Exception lấy sản phẩm ${id}:`, err);
+    error = err;
+  }
 
   if (error || !product) {
     return (
@@ -24,6 +43,7 @@ export default async function ProductDetail(props: {
         <h1 className="text-2xl font-bold text-gray-800 mb-4">
           Sản phẩm không tồn tại!
         </h1>
+        <p className="text-gray-600 text-sm mb-6">ID: {id}</p>
         <Link
           href="/"
           className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -158,7 +178,7 @@ export default async function ProductDetail(props: {
                     {Math.round(
                       ((product.price - product.flash_sale_price) /
                         product.price) *
-                        100
+                        100,
                     )}
                     %
                   </span>

@@ -24,16 +24,21 @@ export default function Header() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        setUser(user);
+      } catch (error) {
+        console.warn("Supabase getUser failed in Header:", error);
+        setUser(null);
+      }
     };
     checkUser();
   }, []);
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
-  
+
   // Hàm này giữ lại để dùng cho Mobile Menu (Menu điện thoại)
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -44,7 +49,7 @@ export default function Header() {
   const renderDynamicContent = (
     dataConfig: any,
     itemLabel: string,
-    groupKey: string
+    groupKey: string,
   ) => {
     if (!dataConfig) return null;
     const activeData = dataConfig[activeMegaTab];
@@ -104,7 +109,7 @@ export default function Header() {
                 title={item.title}
                 count={item.count}
               />
-            )
+            ),
           )}
 
           {shouldShowMore && (
@@ -153,17 +158,17 @@ export default function Header() {
         {/* LOGO */}
         <div className="flex-none flex items-center mr-4">
           <Link href="/" className="flex items-center gap-3 cursor-pointer">
-             <img 
-                src="/logo-thien-hau.png" 
-                alt="Nhà Thuốc Thiên Hậu" 
-                className="h-28 md:h-44 w-auto object-contain p-2"
-             />
+            <img
+              src="/logo-thien-hau.png"
+              alt="Nhà Thuốc Thiên Hậu"
+              className="h-28 md:h-44 w-auto object-contain p-2"
+            />
           </Link>
         </div>
 
         {/* SEARCH BAR */}
         <div className="flex-1 max-w-2xl">
-            <SearchBar />
+          <SearchBar />
         </div>
 
         {/* USER INFO & CART */}
@@ -180,7 +185,7 @@ export default function Header() {
               <span>Đăng nhập</span>
             </Link>
           )}
-          
+
           <Link
             href="/checkout"
             className="flex items-center gap-2 bg-blue-700 text-white px-4 py-3 rounded-full hover:bg-blue-800 transition relative shadow-lg hover:shadow-xl"
@@ -201,7 +206,6 @@ export default function Header() {
         <div className="container mx-auto">
           {/* Sửa text-gray-700 thành text-white */}
           <ul className="flex justify-center gap-8 text-sm font-bold text-white px-4">
-            
             {/* 1. RENDER CÁC MỤC MENU CŨ (TỪ CONSTANTS) */}
             {NAV_ITEMS.map((item) => (
               <li
@@ -216,9 +220,10 @@ export default function Header() {
                   }
                 }}
               >
-                <Link href={item.href} className="uppercase tracking-wide">{item.label}</Link>{" "}
+                <Link href={item.href} className="uppercase tracking-wide">
+                  {item.label}
+                </Link>{" "}
                 <span className="text-[10px] opacity-70">▼</span>
-                
                 {/* --- DROPDOWN PANEL (GIỮ NGUYÊN NỀN TRẮNG CHỮ ĐEN) --- */}
                 <div className="absolute top-full left-0 w-full bg-white text-gray-800 shadow-2xl rounded-b-xl border-t border-gray-100 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 z-40 origin-top text-left mt-[1px]">
                   <div className="container mx-auto flex h-[500px]">
@@ -345,7 +350,7 @@ export default function Header() {
                         renderDynamicContent(
                           item.data,
                           item.label,
-                          activeMegaTab
+                          activeMegaTab,
                         )}
 
                       {item.label === "Thuốc" && (
@@ -564,21 +569,20 @@ export default function Header() {
 
             {/* 👇 2. ĐÃ THÊM: MỤC "HỆ THỐNG NHÀ THUỐC" (Nằm kế bên mục cuối cùng) */}
             <li className="group py-4 cursor-pointer hover:text-yellow-300 flex items-center gap-1 static border-b-2 border-transparent hover:border-yellow-300 transition-all">
-               <Link href="/he-thong-nha-thuoc" className="uppercase tracking-wide">
-                  Hệ thống nhà thuốc
-               </Link>
+              <Link
+                href="/he-thong-nha-thuoc"
+                className="uppercase tracking-wide"
+              >
+                Hệ thống nhà thuốc
+              </Link>
             </li>
-
           </ul>
         </div>
       </div>
 
       {isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={toggleMenu}
-          ></div>
+          <div className="fixed inset-0 bg-black/50" onClick={toggleMenu}></div>
           <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl flex flex-col animate-slide-in">
             <div className="p-4 bg-blue-700 text-white flex justify-between items-center">
               <span className="font-bold text-lg">DANH MỤC</span>
@@ -597,14 +601,14 @@ export default function Header() {
                   {item.label}
                 </Link>
               ))}
-              
+
               {/* Thêm link vào Mobile Menu luôn cho đồng bộ */}
               <Link
-                  href="/he-thong-nha-thuoc"
-                  className="block px-6 py-3 hover:bg-gray-100 border-b"
-                  onClick={toggleMenu}
-                >
-                  HỆ THỐNG NHÀ THUỐC
+                href="/he-thong-nha-thuoc"
+                className="block px-6 py-3 hover:bg-gray-100 border-b"
+                onClick={toggleMenu}
+              >
+                HỆ THỐNG NHÀ THUỐC
               </Link>
 
               <div className="mt-4 px-6">

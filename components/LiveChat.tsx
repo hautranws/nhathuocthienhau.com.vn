@@ -27,10 +27,15 @@ export default function LiveChat() {
   // --- 1. KIỂM TRA ĐĂNG NHẬP (GIỮ NGUYÊN) ---
   useEffect(() => {
     const checkUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setCurrentUser(user);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        setCurrentUser(user);
+      } catch (error) {
+        console.warn("Supabase getUser failed in LiveChat:", error);
+        setCurrentUser(null);
+      }
     };
     checkUser();
 

@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import CategoryClient from "@/components/CategoryClient";
 
+export const revalidate = 60;
+
 // 1. Import dữ liệu để tra cứu tên hiển thị (Title) từ Mã (Key)
 import {
   TPCN_DATA,
@@ -62,7 +64,7 @@ export default async function CategoryPage(props: {
   // Tìm tên mục con (Cấp 3)
   if (groupKey && subKey && ALL_DATA[groupKey]) {
     const foundItem = ALL_DATA[groupKey].items.find(
-      (item: any) => item.sub === subKey
+      (item: any) => item.sub === subKey,
     );
     if (foundItem) {
       subTitle = foundItem.title;
@@ -115,7 +117,9 @@ export default async function CategoryPage(props: {
   // --- LẤY DỮ LIỆU TỪ SUPABASE ---
   const { data: allProducts, error } = await supabase
     .from("products")
-    .select("*")
+    .select(
+      "id, title, name, price, img, unit, discount, original_price, old_price, category, sub_category",
+    )
     .ilike("category", `%${categoryName}%`);
 
   if (error) {
@@ -149,36 +153,36 @@ export default async function CategoryPage(props: {
     finalProducts = finalProducts.filter(
       (p) =>
         p.sub_category &&
-        p.sub_category.toLowerCase().includes(childTitle.toLowerCase())
+        p.sub_category.toLowerCase().includes(childTitle.toLowerCase()),
     );
   } else if (subTitle) {
     if (childCategories.length > 0) {
       const validChildNames = childCategories.map((c: any) =>
-        c.title.toLowerCase()
+        c.title.toLowerCase(),
       );
       validChildNames.push(subTitle.toLowerCase());
 
       finalProducts = finalProducts.filter((p) => {
         if (!p.sub_category) return false;
         return validChildNames.some((name) =>
-          p.sub_category.toLowerCase().includes(name)
+          p.sub_category.toLowerCase().includes(name),
         );
       });
     } else {
       finalProducts = finalProducts.filter(
         (p) =>
           p.sub_category &&
-          p.sub_category.toLowerCase().includes(subTitle.toLowerCase())
+          p.sub_category.toLowerCase().includes(subTitle.toLowerCase()),
       );
     }
   } else if (subCategories.length > 0) {
     const validSubNames = subCategories.map((item: any) =>
-      item.title.toLowerCase()
+      item.title.toLowerCase(),
     );
     finalProducts = finalProducts.filter((p) => {
       if (!p.sub_category) return false;
       return validSubNames.some((validName) =>
-        p.sub_category.toLowerCase().includes(validName)
+        p.sub_category.toLowerCase().includes(validName),
       );
     });
   }
@@ -254,7 +258,7 @@ export default async function CategoryPage(props: {
                 href = `/category/${params.name}?group=${groupKey}&sub=${subKey}&child=${item.sub}`;
               } else if (isSpecialGrid) {
                 const parentKey = Object.keys(
-                  DATA_BY_CATEGORY[categoryName] || {}
+                  DATA_BY_CATEGORY[categoryName] || {},
                 )[0];
                 href = `/category/${params.name}?group=${parentKey}&sub=${item.sub}`;
               } else {

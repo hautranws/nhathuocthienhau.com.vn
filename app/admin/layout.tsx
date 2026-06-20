@@ -20,42 +20,35 @@ export default function AdminLayout({
 
   useEffect(() => {
     const checkUser = async () => {
-      // 1. Lấy thông tin người đang đăng nhập
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       if (!session) {
-        // Chưa đăng nhập -> Nếu ở trang gốc /admin thì hiển thị form (Không đá về /login nữa)
-        if (pathname === "/admin") {
-          setAuthorized(false);
-          setIsChecking(false);
-        } else {
-          // Nếu vào link con (VD: /admin/inventory) mà chưa đăng nhập -> Đá ra ngoài
-          router.push("/admin");
-        }
-      } else {
-        // 2. KIỂM TRA EMAIL HOẶC SĐT CÓ PHẢI ADMIN KHÔNG?
-        const userPhone = session.user.phone || "";
-        const userEmail = session.user.email || "";
-        const cleanPhone = userPhone.replace(/[^0-9]/g, "");
-
-        const isPhoneMatch = cleanPhone.includes(ADMIN_PHONE_CORE);
-        const isEmailMatch = userEmail === ADMIN_EMAIL;
-
-        if (isEmailMatch || isPhoneMatch) {
-          setAuthorized(true); // Đúng là Admin -> Cho vào
-          setIsChecking(false);
-        } else {
-          // Đã đăng nhập nhưng là KHÁCH HÀNG -> Đá về trang chủ
-          alert("Bạn không có quyền truy cập trang Quản trị!");
-          router.push("/");
-        }
+        router.push("/login");
+        setIsChecking(false);
+        return;
       }
+
+      const userPhone = session.user.phone || "";
+      const userEmail = session.user.email || "";
+      const cleanPhone = userPhone.replace(/[^0-9]/g, "");
+
+      const isPhoneMatch = cleanPhone.includes(ADMIN_PHONE_CORE);
+      const isEmailMatch = userEmail === ADMIN_EMAIL;
+
+      if (isEmailMatch || isPhoneMatch) {
+        setAuthorized(true);
+      } else {
+        alert("Bạn không có quyền truy cập trang Quản trị!");
+        router.push("/login");
+      }
+
+      setIsChecking(false);
     };
 
     checkUser();
-  }, [router, pathname]);
+  }, [router]);
 
   if (isChecking) {
     return (
@@ -65,10 +58,8 @@ export default function AdminLayout({
     );
   }
 
-  // Nếu chưa đăng nhập và đang ở trang form login (app/admin/page.tsx)
-  // Ta không render phần Header (🛡️ TRANG QUẢN TRỊ VIÊN)
   if (!authorized) {
-    return <>{children}</>;
+    return null;
   }
 
   return (

@@ -28,16 +28,20 @@ export default function Banner() {
   // --- 1. LẤY DỮ LIỆU TỪ SUPABASE ---
   useEffect(() => {
     const fetchBanners = async () => {
-      const { data, error } = await supabase
-        .from("banners_thienhau")
-        .select("*")
-        .eq("active", true) // Chỉ lấy banner đang bật
-        .order("id", { ascending: false }); // Sắp xếp theo id thay vì created_at để tránh lỗi thiếu cột
+      try {
+        const { data, error } = await supabase
+          .from("banners_thienhau")
+          .select("*")
+          .eq("active", true)
+          .order("id", { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        setSlides(data);
-      } else if (error) {
-        console.error("Lỗi lấy danh sách banner:", error);
+        if (!error && data && data.length > 0) {
+          setSlides(data);
+        } else if (error) {
+          console.warn("Lỗi lấy danh sách banner:", error);
+        }
+      } catch (err) {
+        console.warn("Banner fetch error:", err);
       }
     };
 
