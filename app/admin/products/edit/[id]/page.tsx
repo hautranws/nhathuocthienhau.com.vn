@@ -41,6 +41,7 @@ export default function EditProductPage({
     origin: "",
     unit: "",
     description: "",
+    sku: "",
     registration_no: "",
     dosage_form: "",
     specification: "",
@@ -49,6 +50,27 @@ export default function EditProductPage({
     expiry: "",
     is_best_seller: false,
   });
+
+  // --- MỚI: State và logic QUY ĐỔI ĐƠN VỊ ---
+  const [hasConversion, setHasConversion] = useState(false);
+  const [conversionUnits, setConversionUnits] = useState<any[]>([]);
+
+  const addConversionUnit = () => {
+    setConversionUnits([
+      ...conversionUnits,
+      { unit_name: "", quantity: "", price: "", old_price: "", sku: "" },
+    ]);
+  };
+
+  const removeConversionUnit = (index: number) => {
+    setConversionUnits(conversionUnits.filter((_, i) => i !== index));
+  };
+
+  const updateConversionUnit = (index: number, field: string, value: any) => {
+    const updated = [...conversionUnits];
+    updated[index][field] = value;
+    setConversionUnits(updated);
+  };
 
   // --- STATE QUẢN LÝ ẢNH ---
   const [images, setImages] = useState<string[]>([]); // Dùng để hiển thị (Preview)
@@ -78,13 +100,13 @@ export default function EditProductPage({
           let subs: string[] = [];
           if (data.sub_category) {
             if (data.sub_category.startsWith("[")) {
-               try {
-                  subs = JSON.parse(data.sub_category);
-               } catch {
-                  subs = [];
-               }
+              try {
+                subs = JSON.parse(data.sub_category);
+              } catch {
+                subs = [];
+              }
             } else {
-               subs = data.sub_category.split(",").map((s: string) => s.trim());
+              subs = data.sub_category.split(",").map((s: string) => s.trim());
             }
           }
 
@@ -106,17 +128,33 @@ export default function EditProductPage({
           }
           setImages(loadedImages);
 
+          // --- XỬ LÝ QUY ĐỔI ĐƠN VỊ ---
+          let convUnits = [];
+          if (data.conversion_units) {
+            try {
+              convUnits =
+                typeof data.conversion_units === "string"
+                  ? JSON.parse(data.conversion_units)
+                  : data.conversion_units;
+            } catch (e) {
+              convUnits = [];
+            }
+          }
+          setConversionUnits(convUnits);
+          setHasConversion(convUnits.length > 0);
+
           // Đổ dữ liệu vào Form
           setFormData({
             title: data.title || "",
             price: data.price || "",
             old_price: data.old_price || "",
-            category: data.category || "", 
+            category: data.category || "",
             sub_category: subs,
             brand: data.brand || "",
             origin: data.origin || "",
             unit: data.unit || "",
             description: data.description || "",
+            sku: data.sku || "",
             registration_no: data.registration_no || "",
             dosage_form: data.dosage_form || "",
             specification: data.specification || "",
@@ -142,7 +180,7 @@ export default function EditProductPage({
               }
             });
             const uniqueItems = Array.from(
-              new Set(items.map((i) => i.title))
+              new Set(items.map((i) => i.title)),
             ).map((title) => items.find((i) => i.title === title));
             setSubOptions(uniqueItems);
           }
@@ -179,7 +217,7 @@ export default function EditProductPage({
         }
       });
       const uniqueItems = Array.from(new Set(items.map((i) => i.title))).map(
-        (title) => items.find((i) => i.title === title)
+        (title) => items.find((i) => i.title === title),
       );
       setSubOptions(uniqueItems);
     } else {
@@ -212,12 +250,12 @@ export default function EditProductPage({
     }
 
     const fileArray = Array.from(files);
-    
+
     // Thêm file vào hàng đợi upload
     setNewFiles((prev) => [...prev, ...fileArray]);
 
     // Tạo ảnh preview ngay lập tức (dùng Blob URL nhẹ nhàng)
-    const newPreviewUrls = fileArray.map(file => URL.createObjectURL(file));
+    const newPreviewUrls = fileArray.map((file) => URL.createObjectURL(file));
     setImages((prev) => [...prev, ...newPreviewUrls]);
   };
 
@@ -231,7 +269,7 @@ export default function EditProductPage({
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const resolvedParams = await params;
       const id = resolvedParams.id;
@@ -239,33 +277,33 @@ export default function EditProductPage({
       // 1. Upload ảnh mới (nếu có) lên Storage
       let newUploadedUrls: string[] = [];
       if (newFiles.length > 0) {
-          setUploading(true);
-          for (const file of newFiles) {
-              const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
-              const { error: uploadError } = await supabase.storage
-                  .from("products") // Upload vào bucket 'products'
-                  .upload(fileName, file);
-              
-              if (uploadError) {
-                  console.error("Lỗi upload:", uploadError);
-                  // Không throw error để vẫn lưu được các ảnh khác
-                  continue; 
-              }
+        setUploading(true);
+        for (const file of newFiles) {
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+          const { error: uploadError } = await supabase.storage
+            .from("products") // Upload vào bucket 'products'
+            .upload(fileName, file);
 
-              const { data: urlData } = supabase.storage
-                  .from("products")
-                  .getPublicUrl(fileName);
-              
-              newUploadedUrls.push(urlData.publicUrl);
+          if (uploadError) {
+            console.error("Lỗi upload:", uploadError);
+            // Không throw error để vẫn lưu được các ảnh khác
+            continue;
           }
-          setUploading(false);
+
+          const { data: urlData } = supabase.storage
+            .from("products")
+            .getPublicUrl(fileName);
+
+          newUploadedUrls.push(urlData.publicUrl);
+        }
+        setUploading(false);
       }
 
       // 2. Gộp ảnh:
       // - Lấy những ảnh CŨ còn giữ lại (là những link bắt đầu bằng http hoặc data:image cũ)
       // - Loại bỏ những ảnh blob: (là ảnh preview tạm thời, thay bằng link thật vừa upload)
-      const keptOldImages = images.filter(img => !img.startsWith('blob:'));
-      
+      const keptOldImages = images.filter((img) => !img.startsWith("blob:"));
+
       // - Gộp ảnh cũ + ảnh mới vừa upload xong
       const finalImages = [...keptOldImages, ...newUploadedUrls];
       const imgJsonString = JSON.stringify(finalImages);
@@ -278,6 +316,9 @@ export default function EditProductPage({
         sub_category: subCategoryString,
         price: Number(formData.price),
         old_price: formData.old_price ? Number(formData.old_price) : 0,
+        conversion_units: hasConversion
+          ? JSON.stringify(conversionUnits.filter((u) => u.unit_name))
+          : null,
       };
 
       const { error } = await supabase
@@ -288,7 +329,7 @@ export default function EditProductPage({
       if (error) throw error;
 
       alert("✅ Cập nhật thành công!");
-      router.push("/admin/activity"); 
+      router.push("/admin/activity");
     } catch (error: any) {
       console.error(error);
       alert("Lỗi cập nhật: " + error.message);
@@ -299,7 +340,9 @@ export default function EditProductPage({
   };
 
   if (fetching)
-    return <div className="p-10 text-center text-gray-500">Đang tải dữ liệu...</div>;
+    return (
+      <div className="p-10 text-center text-gray-500">Đang tải dữ liệu...</div>
+    );
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -330,6 +373,22 @@ export default function EditProductPage({
                 setFormData({ ...formData, title: e.target.value })
               }
               required
+            />
+          </div>
+
+          {/* Hàng: SKU */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">
+              Mã SKU (Mã sản phẩm)
+            </label>
+            <input
+              type="text"
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-400 outline-none"
+              placeholder="VD: SKU123456"
+              value={formData.sku}
+              onChange={(e) =>
+                setFormData({ ...formData, sku: e.target.value })
+              }
             />
           </div>
 
@@ -438,7 +497,9 @@ export default function EditProductPage({
                   ))
                 ) : (
                   <div className="col-span-3 text-center text-gray-500 text-sm py-4">
-                    {formData.category ? "Không có mục con" : "Vui lòng chọn danh mục lớn trước"}
+                    {formData.category
+                      ? "Không có mục con"
+                      : "Vui lòng chọn danh mục lớn trước"}
                   </div>
                 )}
               </div>
@@ -448,7 +509,9 @@ export default function EditProductPage({
           {/* Giá cả */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-bold mb-1">Giá bán (VNĐ)</label>
+              <label className="block text-sm font-bold mb-1">
+                Giá bán (VNĐ)
+              </label>
               <input
                 type="number"
                 className="w-full p-3 border rounded-lg"
@@ -460,7 +523,9 @@ export default function EditProductPage({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold mb-1 text-gray-500">Giá cũ</label>
+              <label className="block text-sm font-bold mb-1 text-gray-500">
+                Giá cũ
+              </label>
               <input
                 type="number"
                 className="w-full p-3 border rounded-lg"
@@ -471,7 +536,9 @@ export default function EditProductPage({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold mb-1">Đơn vị (Hộp/Vỉ)</label>
+              <label className="block text-sm font-bold mb-1">
+                Đơn vị (Hộp/Vỉ)
+              </label>
               <input
                 type="text"
                 className="w-full p-3 border rounded-lg"
@@ -481,6 +548,282 @@ export default function EditProductPage({
                 }
               />
             </div>
+          </div>
+          {/* --- CHỨC NĂNG QUY ĐỔI ĐƠN VỊ (MỚI) --- */}
+          <div className="bg-white p-6 border rounded-xl shadow-sm space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  Thêm đơn vị quy đổi
+                  <span
+                    className="text-blue-500 cursor-help"
+                    title="Dùng khi sản phẩm có nhiều cách đóng gói: Viên, Vỉ, Hộp..."
+                  >
+                    ⓘ
+                  </span>
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Tạo và quy đổi các đơn vị tính khác nhau
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!hasConversion && conversionUnits.length === 0) {
+                    addConversionUnit();
+                  }
+                  setHasConversion(!hasConversion);
+                }}
+                className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none ${hasConversion ? "bg-blue-600" : "bg-gray-300"}`}
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${hasConversion ? "translate-x-6" : ""}`}
+                />
+              </button>
+            </div>
+
+            {hasConversion && (
+              <div className="space-y-4 mt-4">
+                <div className="hidden md:grid grid-cols-12 gap-4 text-xs font-bold text-gray-500 uppercase px-2">
+                  <div className="col-span-3">Đơn vị quy đổi</div>
+                  <div className="col-span-2">Số lượng (quy từ đ.vị gốc)</div>
+                  <div className="col-span-3">Giá bán</div>
+                  <div className="col-span-3">SKU đơn vị</div>
+                  <div className="col-span-1"></div>
+                </div>
+
+                {conversionUnits.map((item, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-gray-50 p-3 rounded-lg border border-gray-100 relative"
+                  >
+                    <div className="col-span-3">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        Đơn vị quy đổi
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="VD: Vỉ / Hộp"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.unit_name}
+                        onChange={(e) =>
+                          updateConversionUnit(
+                            index,
+                            "unit_name",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        Số lượng
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="12"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateConversionUnit(
+                            index,
+                            "quantity",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        Giá bán
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Giá cho đơn vị này"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.price}
+                        onChange={(e) =>
+                          updateConversionUnit(index, "price", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        SKU đơn vị
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="SKU-VI / SKU-HOP"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.sku}
+                        onChange={(e) =>
+                          updateConversionUnit(index, "sku", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="col-span-1 text-right">
+                      <button
+                        type="button"
+                        onClick={() => removeConversionUnit(index)}
+                        className="text-red-500 hover:text-red-700 font-bold p-1"
+                        title="Xóa đơn vị này"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addConversionUnit}
+                  className="flex items-center gap-2 text-blue-600 font-bold text-sm hover:underline mt-2 bg-blue-50 px-3 py-2 rounded-lg"
+                >
+                  <span className="flex items-center justify-center w-5 h-5 bg-blue-600 text-white rounded-full text-xs">
+                    +
+                  </span>
+                  Thêm đơn vị khác
+                </button>
+              </div>
+            )}
+          </div>
+          {/* --- CHỨC NĂNG QUY ĐỔI ĐƠN VỊ (MỚI) --- */}
+          <div className="bg-white p-6 border rounded-xl shadow-sm space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  Thêm đơn vị quy đổi
+                  <span
+                    className="text-blue-500 cursor-help"
+                    title="Dùng khi sản phẩm có nhiều cách đóng gói: Viên, Vỉ, Hộp..."
+                  >
+                    ⓘ
+                  </span>
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Tạo và quy đổi các đơn vị tính khác nhau
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!hasConversion && conversionUnits.length === 0) {
+                    addConversionUnit();
+                  }
+                  setHasConversion(!hasConversion);
+                }}
+                className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none ${hasConversion ? "bg-blue-600" : "bg-gray-300"}`}
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${hasConversion ? "translate-x-6" : ""}`}
+                />
+              </button>
+            </div>
+
+            {hasConversion && (
+              <div className="space-y-4 mt-4">
+                <div className="hidden md:grid grid-cols-12 gap-4 text-xs font-bold text-gray-500 uppercase px-2">
+                  <div className="col-span-3">Đơn vị quy đổi</div>
+                  <div className="col-span-2">Số lượng (quy từ đ.vị gốc)</div>
+                  <div className="col-span-3">Giá bán</div>
+                  <div className="col-span-3">SKU đơn vị</div>
+                  <div className="col-span-1"></div>
+                </div>
+
+                {conversionUnits.map((item, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-gray-50 p-3 rounded-lg border border-gray-100 relative"
+                  >
+                    <div className="col-span-3">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        Đơn vị quy đổi
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="VD: Vỉ / Hộp"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.unit_name}
+                        onChange={(e) =>
+                          updateConversionUnit(
+                            index,
+                            "unit_name",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        Số lượng
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="12"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateConversionUnit(
+                            index,
+                            "quantity",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        Giá bán
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Giá cho đơn vị này"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.price}
+                        onChange={(e) =>
+                          updateConversionUnit(index, "price", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        SKU đơn vị
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="SKU-VI / SKU-HOP"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.sku}
+                        onChange={(e) =>
+                          updateConversionUnit(index, "sku", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="col-span-1 text-right">
+                      <button
+                        type="button"
+                        onClick={() => removeConversionUnit(index)}
+                        className="text-red-500 hover:text-red-700 font-bold p-1"
+                        title="Xóa đơn vị này"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addConversionUnit}
+                  className="flex items-center gap-2 text-blue-600 font-bold text-sm hover:underline mt-2 bg-blue-50 px-3 py-2 rounded-lg"
+                >
+                  <span className="flex items-center justify-center w-5 h-5 bg-blue-600 text-white rounded-full text-xs">
+                    +
+                  </span>
+                  Thêm đơn vị khác
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Thương hiệu & Xuất xứ */}
@@ -602,7 +945,9 @@ export default function EditProductPage({
 
           {/* Mô tả */}
           <div>
-            <label className="block text-sm font-bold mb-1">Mô tả sản phẩm</label>
+            <label className="block text-sm font-bold mb-1">
+              Mô tả sản phẩm
+            </label>
             <textarea
               className="w-full p-3 border rounded-lg h-32"
               value={formData.description}
@@ -621,7 +966,9 @@ export default function EditProductPage({
                 : "bg-yellow-500 hover:bg-yellow-600 shadow-lg"
             }`}
           >
-            {loading || uploading ? "Đang Upload ảnh & Lưu..." : "💾 LƯU THAY ĐỔI"}
+            {loading || uploading
+              ? "Đang Upload ảnh & Lưu..."
+              : "💾 LƯU THAY ĐỔI"}
           </button>
         </form>
       </div>

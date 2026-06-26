@@ -1,36 +1,65 @@
-import React, { cache } from "react"; // Thêm 'cache' từ react
+import React from "react";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
-import Image from "next/image"; // Đã thêm Image cho phần Sản phẩm bán chạy
+import Image from "next/image";
 import Banner from "@/components/Banner";
 import FlashSale from "@/components/FlashSale";
 import CategoryGrid from "@/components/CategoryGrid";
 import ProductCard from "@/components/ProductCard";
 
-// Khai báo thời gian cache là 60 giây. Cứ sau 1 phút, người đầu tiên vào web sẽ
-// kích hoạt máy chủ lấy dữ liệu mới 1 lần duy nhất, những người sau dùng lại đồ cũ.
-export const revalidate = 60;
+export const revalidate = 0; // Tắt cache hoàn toàn
 
-// BỌC HÀM GỌI DATABASE BẰNG 'cache()' ĐỂ NEXT.JS LƯU LẠI KẾT QUẢ
-const getProducts = cache(async () => {
-  const { data, error } = await supabase
+async function getProducts() {
+  // Dùng supabaseAdmin để bypass RLS
+  const { data, error } = await supabaseAdmin
     .from("products")
     .select(
-      "id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price",
+      "id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price, category, is_prescription, is_homepage_visible, specification, conversion_units",
+    )
+    .eq("is_homepage_visible", true)
+    .order("id", { ascending: false });
+
+  if (error) {
+    console.error("❌ Lỗi lấy hàng chọn lọc:", error.message);
+  }
+
+  console.log("✅ Tìm thấy", data?.length || 0, "sản phẩm chọn lọc");
+
+  // Nếu có sản phẩm được chọn, trả về
+  if (data && data.length > 0) {
+    return { data, error };
+  }
+
+  // Nếu không có sản phẩm được chọn, fallback lấy 20 sản phẩm mới nhất
+  console.log(
+    "⚠️ Không có sản phẩm được chọn, fallback lấy sản phẩm mới nhất...",
+  );
+  const { data: defaultData, error: defaultError } = await supabaseAdmin
+    .from("products")
+    .select(
+      "id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price, category, is_prescription, is_homepage_visible",
     )
     .order("id", { ascending: false })
     .limit(20);
-  return { data, error };
-});
 
-const getBestSellers = cache(async () => {
-  const { data, error } = await supabase
+  if (defaultError) {
+    console.error("❌ Lỗi lấy sản phẩm fallback:", defaultError.message);
+  }
+
+  console.log("✅ Fallback: Lấy được", defaultData?.length || 0, "sản phẩm");
+
+  return { data: defaultData || [], error: defaultError };
+}
+
+async function getBestSellers() {
+  const { data, error } = await supabaseAdmin
     .from("products")
-    .select("id, title, price, old_price, img")
+    .select("id, title, price, old_price, img, category, is_prescription")
     .eq("is_best_seller", true)
     .limit(10);
   return { data, error };
-});
+}
 
 export default async function Home() {
   let products: any[] | null = null;
@@ -113,44 +142,71 @@ export default async function Home() {
                     }
                   }
 
+                  const isRx =
+                    product.category === "Thuốc" && product.is_prescription;
+
                   return (
-                    <Link
-                      href={`/product/${product.id}`}
+                    <div
                       key={product.id}
                       className="group block p-4 hover:shadow-lg transition relative bg-white"
                     >
-                      <div className="aspect-square relative mb-3 overflow-hidden rounded-lg bg-gray-50">
-                        {/* Đã sửa thẻ <img> thành <Image /> để giảm băng thông */}
-                        <Image
-                          src={finalImg}
-                          alt={product.title}
-                          fill
-                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                          className="object-contain group-hover:scale-105 transition duration-300"
-                        />
-                      </div>
-                      <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-10 group-hover:text-blue-600">
-                        {product.title}
-                      </h3>
-                      <div className="mt-2">
-                        <div className="flex items-end gap-2">
-                          <span className="text-red-600 font-bold text-lg">
-                            {Number(product.price).toLocaleString("vi-VN")}đ
-                          </span>
-                          {product.old_price && (
-                            <span className="text-gray-400 text-xs line-through mb-1">
-                              {Number(product.old_price).toLocaleString(
-                                "vi-VN",
+                      <Link href={`/product/${product.id}`} className="block">
+                        <div className="aspect-square relative mb-3 overflow-hidden rounded-lg bg-white">
+                          {isRx && (
+                            <div className="absolute top-2 left-2 z-10">
+                              <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                Rx
+                              </span>
+                            </div>
+                          )}
+                          <Image
+                            src={finalImg}
+                            alt={product.title}
+                            fill
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                            className="object-contain group-hover:scale-105 transition duration-300"
+                          />
+                        </div>
+                        <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-10 group-hover:text-blue-600">
+                          {product.title}
+                        </h3>
+                        <div className="mt-2">
+                          {isRx ? (
+                            <p className="text-gray-500 text-sm">
+                              Cần tư vấn từ dược sĩ
+                            </p>
+                          ) : (
+                            <div className="flex items-end gap-1">
+                              <span className="text-blue-600 font-bold text-lg">
+                                {Number(product.price).toLocaleString("vi-VN")}đ
+                              </span>
+                              {product.old_price && (
+                                <span className="text-gray-400 text-xs line-through mb-1 font-normal">
+                                  {Number(product.old_price).toLocaleString(
+                                    "vi-VN",
+                                  )}
+                                  đ
+                                </span>
                               )}
-                              đ
-                            </span>
+                            </div>
                           )}
                         </div>
-                      </div>
-                      <div className="mt-3 w-full bg-blue-600 text-white text-center py-2 rounded-full font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                        Chọn mua
-                      </div>
-                    </Link>
+                      </Link>
+                      {isRx ? (
+                        <a
+                          href="https://zalo.me/0988991837"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-3 block w-full bg-blue-50 text-blue-600 font-bold py-2 rounded-full hover:bg-blue-100 transition-colors text-xs text-center border border-blue-100"
+                        >
+                          Tư vấn ngay
+                        </a>
+                      ) : (
+                        <div className="mt-3 w-full bg-blue-600 text-white text-center py-2 rounded-full font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                          Chọn mua
+                        </div>
+                      )}
+                    </div>
                   );
                 })
               ) : (
@@ -164,30 +220,46 @@ export default async function Home() {
 
         <CategoryGrid />
 
-        <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 border-l-4 border-blue-600 pl-4">
-          Sản phẩm từ kho hàng (Realtime)
-        </h2>
+        {/* --- GIAO DIỆN SẢN PHẨM CHỌN LỌC --- */}
+        <section className="mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">✨</span>
+                <h2 className="text-xl font-bold uppercase">
+                  Sản phẩm chọn lọc
+                </h2>
+              </div>
+              <Link
+                href="/"
+                className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition"
+              >
+                Xem tất cả →
+              </Link>
+            </div>
 
-        {homepageError ? (
-          <div className="col-span-2 md:col-span-4 text-center py-10 text-red-700 bg-red-50 rounded-lg border border-red-200">
-            <p className="font-semibold mb-2">
-              Không thể kết nối đến Supabase.
-            </p>
-            <p className="text-sm text-gray-600">{homepageError}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-            {productsList.length > 0 ? (
-              productsList.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))
+            {homepageError ? (
+              <div className="p-8 text-center text-red-700 bg-red-50 border-t border-red-200">
+                <p className="font-semibold mb-2">
+                  Không thể kết nối đến Supabase.
+                </p>
+                <p className="text-sm text-gray-600">{homepageError}</p>
+              </div>
             ) : (
-              <div className="col-span-2 md:col-span-4 text-center py-10 text-gray-500 bg-white rounded-lg">
-                <p>📭 Kho hàng đang trống hoặc chưa mở khóa RLS.</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-0 divide-x divide-y divide-gray-100">
+                {productsList && productsList.length > 0 ? (
+                  productsList.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-gray-500 col-span-full">
+                    Chưa có sản phẩm chọn lọc nào được chọn.
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+        </section>
       </main>
     </div>
   );

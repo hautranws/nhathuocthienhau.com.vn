@@ -10,6 +10,8 @@ interface Product {
   price: number;
   flash_sale_price: number;
   img: string;
+  category: string;
+  is_prescription: boolean;
   flash_sale_start: string; // Thêm cột này trong DB
   flash_sale_end: string; // Thêm cột này trong DB
 }
@@ -138,6 +140,7 @@ export default function FlashSale() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 relative z-10">
         {products.map((item) => {
+          const isRx = item.category === "Thuốc" && item.is_prescription;
           const discountPercent =
             item.price > 0
               ? Math.round(
@@ -158,21 +161,28 @@ export default function FlashSale() {
 
           return (
             <Link
-              href={`/san-pham/${item.id}`} // Link này dẫn đến trang chi tiết
+              href={`/product/${item.id}`} // Link này dẫn đến trang chi tiết
               key={item.id}
               className="bg-white rounded-xl p-3 text-gray-800 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer relative group block transform hover:-translate-y-1"
             >
-              {discountPercent > 0 && (
+              {isRx && (
+                <div className="absolute top-2 left-2 z-10">
+                  <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                    Rx
+                  </span>
+                </div>
+              )}
+              {discountPercent > 0 && !isRx && (
                 <div className="absolute top-0 right-0 bg-yellow-400 text-red-700 text-[10px] md:text-xs font-black px-2 py-1 rounded-bl-lg rounded-tr-lg z-10 shadow-sm">
                   GIẢM {discountPercent}%
                 </div>
               )}
 
-              <div className="h-32 md:h-40 flex items-center justify-center mb-3 overflow-hidden rounded-lg bg-gray-50">
+              <div className="w-full aspect-square flex items-center justify-center mb-3 overflow-hidden rounded-lg bg-white relative">
                 <img
                   src={displayImage}
                   alt={item.title || item.name}
-                  className="h-full object-contain group-hover:scale-110 transition duration-500 mix-blend-multiply"
+                  className="w-full h-full object-contain group-hover:scale-110 transition duration-500"
                 />
               </div>
 
@@ -181,14 +191,22 @@ export default function FlashSale() {
               </h3>
 
               <div className="flex flex-col mb-3">
-                <div className="flex items-end gap-2">
-                  <span className="text-red-600 font-extrabold text-base md:text-lg leading-none">
-                    {Number(item.flash_sale_price).toLocaleString("vi-VN")}đ
+                {isRx ? (
+                  <span className="text-blue-600 font-bold text-xs h-10 flex items-center">
+                    Cần tư vấn từ dược sĩ
                   </span>
-                </div>
-                <span className="text-gray-400 text-[10px] md:text-xs line-through mt-1">
-                  Giá gốc: {Number(item.price).toLocaleString("vi-VN")}đ
-                </span>
+                ) : (
+                  <>
+                    <div className="flex items-end gap-2">
+                      <span className="text-red-600 font-extrabold text-base md:text-lg leading-none">
+                        {Number(item.flash_sale_price).toLocaleString("vi-VN")}đ
+                      </span>
+                    </div>
+                    <span className="text-gray-400 text-[10px] md:text-xs line-through mt-1">
+                      Giá gốc: {Number(item.price).toLocaleString("vi-VN")}đ
+                    </span>
+                  </>
+                )}
               </div>
 
               {/* Thanh trạng thái đã bán */}

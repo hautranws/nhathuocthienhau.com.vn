@@ -29,7 +29,7 @@ const categories = [
     name: "Tăng sức đề kháng",
     icon: "🛡️",
     color: "bg-blue-50",
-    href: "/category/Thực phẩm chức năng?group=TangCuong&sub=TangSucDeKhang",
+    href: "/category/Thực phẩm chức năng?group=HoTro&sub=TangDeKhang",
   },
   {
     id: 5,
@@ -64,7 +64,7 @@ const categories = [
     name: "Giải pháp làn da",
     icon: "✨",
     color: "bg-blue-50",
-    href: "/category/Dược mỹ phẩm?group=GiaiPhapLanDa",
+    href: "/category/Dược mỹ phẩm?group=ChamSocDaMat&sub=GiaiPhapChoTungTinhTrangDa",
   },
   {
     id: 10,
@@ -85,7 +85,7 @@ const categories = [
     name: "Hỗ trợ tình dục",
     icon: "👩‍❤️‍👨",
     color: "bg-blue-50",
-    href: "/category/Thực phẩm chức năng?group=HoTroTinhDuc",
+    href: "/category/Thực phẩm chức năng?group=SinhLy&sub=HoTroTinhDuc",
   },
 ];
 

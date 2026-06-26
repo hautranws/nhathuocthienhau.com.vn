@@ -28,37 +28,68 @@ export default async function RelatedProducts({
       </h2>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {products.map((product) => (
-          <Link
-            key={product.id}
-            href={`/product/${product.id}`}
-            className="block group"
-          >
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition h-full flex flex-col">
-              {/* Ảnh */}
-              <div
-                className={`h-32 ${product.image_url} rounded-lg mb-3 flex items-center justify-center text-gray-400 bg-opacity-20`}
-              >
-                [Ảnh]
-              </div>
+        {products.map((product) => {
+          const isRx = product.category === "Thuốc" && product.is_prescription;
+          let finalImg = "https://via.placeholder.com/150";
+          if (product.img) {
+            try {
+              finalImg = product.img.startsWith("[")
+                ? JSON.parse(product.img)[0]
+                : product.img;
+            } catch (e) {
+              finalImg = product.img;
+            }
+          }
 
-              {/* Tên */}
-              <h3 className="font-bold text-gray-800 text-sm line-clamp-2 mb-2 group-hover:text-blue-700 min-h-[40px]">
-                {product.name}
-              </h3>
+          return (
+            <Link
+              key={product.id}
+              href={`/product/${product.id}`}
+              className="block group"
+            >
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition h-full flex flex-col relative">
+                {isRx && (
+                  <div className="absolute top-2 left-2 z-10">
+                    <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                      Rx
+                    </span>
+                  </div>
+                )}
+                {/* Ảnh */}
+                <div className="w-full aspect-square bg-white rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
+                  <img
+                    src={finalImg}
+                    alt={product.title}
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                  />
+                </div>
 
-              {/* Giá */}
-              <div className="mt-auto">
-                <p className="text-blue-600 font-bold">
-                  {product.price?.toLocaleString("vi-VN")}đ
-                  <span className="text-gray-400 text-xs font-normal ml-1">
-                    / {product.unit}
-                  </span>
-                </p>
+                {/* Tên */}
+                <h3 className="font-bold text-gray-800 text-sm line-clamp-2 mb-2 group-hover:text-blue-700 min-h-[40px]">
+                  {product.title || product.name}
+                </h3>
+
+                {/* Giá hoặc Tư vấn */}
+                <div className="mt-auto">
+                  {isRx ? (
+                    <div className="w-full bg-blue-50 text-blue-600 font-bold py-1.5 rounded-full text-[10px] text-center border border-blue-100 uppercase">
+                      Tư vấn ngay
+                    </div>
+                  ) : (
+                    <p className="text-blue-700 font-bold text-sm">
+                      {product.price?.toLocaleString("vi-VN")}đ
+                      {product.unit && (
+                        <span className="text-gray-400 text-[10px] font-normal ml-1">
+                          / {product.unit}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

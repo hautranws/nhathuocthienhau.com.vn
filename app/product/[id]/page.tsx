@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import ProductGallery from "@/components/ProductGallery";
 import ProductSpecs from "@/components/ProductSpecs";
-import AddToCartButton from "@/components/AddToCartButton";
+import ProductInfoAction from "@/components/ProductInfoAction";
 
 export const revalidate = 60;
 
@@ -21,7 +21,7 @@ export default async function ProductDetail(props: {
     const { data, error: queryError } = await supabase
       .from("products")
       .select(
-        "id, title, category, sub_category, brand, flash_sale_start, flash_sale_end, is_flash_sale, is_prescription, price, old_price, flash_sale_price, discount, unit, specification, origin, manufacturer, expiry, indications, contraindications, description, img, ingredients, registration_no, dosage_form",
+        "id, title, category, sub_category, brand, flash_sale_start, flash_sale_end, is_flash_sale, is_prescription, price, old_price, flash_sale_price, discount, unit, specification, origin, manufacturer, expiry, indications, contraindications, description, img, ingredients, registration_no, dosage_form, sku, conversion_units",
       )
       .eq("id", id)
       .single();
@@ -63,6 +63,7 @@ export default async function ProductDetail(props: {
     ? new Date(product.flash_sale_end).getTime()
     : 0;
   const isFlashSaleActive = product.is_flash_sale && now >= start && now <= end;
+  const isRx = product.category === "Thuốc" && product.is_prescription;
 
   // --- XỬ LÝ LOGIC ALBUM ẢNH ---
   let productImages: string[] = [];
@@ -130,7 +131,7 @@ export default async function ProductDetail(props: {
                     Rx - Thuốc kê đơn
                   </span>
                 )}
-                {product.title }
+                {product.title}
               </h1>
 
               <div className="flex items-center gap-4 mt-3 text-sm">
@@ -152,64 +153,12 @@ export default async function ProductDetail(props: {
               </div>
             </div>
 
-            {/* --- KHU VỰC HIỂN THỊ GIÁ --- */}
-            {isFlashSaleActive ? (
-              <div className="mb-6 bg-gradient-to-r from-red-600 to-orange-500 rounded-lg p-4 text-white shadow-md relative overflow-hidden">
-                <div className="absolute top-[-10px] right-[-10px] opacity-20 text-6xl pointer-events-none select-none">
-                  ⚡
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-black text-yellow-300 uppercase tracking-wider text-sm animate-pulse">
-                    ⚡ Flash Sale
-                  </span>
-                  <span className="bg-white text-red-600 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                    Đang diễn ra
-                  </span>
-                </div>
-                <div className="flex items-end gap-3">
-                  <span className="text-3xl md:text-5xl font-extrabold text-white">
-                    {Number(product.flash_sale_price).toLocaleString("vi-VN")}đ
-                  </span>
-                  <span className="text-white/80 text-lg line-through mb-1.5">
-                    {Number(product.price).toLocaleString("vi-VN")}đ
-                  </span>
-                  <span className="bg-yellow-400 text-red-700 text-xs font-black px-2 py-1 rounded mb-2 shadow-sm">
-                    -
-                    {Math.round(
-                      ((product.price - product.flash_sale_price) /
-                        product.price) *
-                        100,
-                    )}
-                    %
-                  </span>
-                </div>
-                <p className="text-xs text-white/90 mt-2 font-medium">
-                  🔥 Giá sốc chỉ áp dụng trong khung giờ vàng.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                <div className="flex items-end gap-3">
-                  <span className="text-3xl md:text-4xl font-bold text-blue-700">
-                    {Number(product.price).toLocaleString("vi-VN")}đ
-                  </span>
-                  {product.old_price && (
-                    <span className="text-gray-400 text-lg line-through mb-1">
-                      {Number(product.old_price).toLocaleString("vi-VN")}đ
-                    </span>
-                  )}
-                  {product.discount && (
-                    <span className="text-blue-600 bg-blue-100 px-2 py-0.5 rounded text-xs font-bold mb-2">
-                      {product.discount}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  Giá đã bao gồm thuế (nếu có){" "}
-                  {product.unit ? ` / ${product.unit}` : ""}
-                </p>
-              </div>
-            )}
+            {/* --- KHU VỰC HIỂN THỊ GIÁ VÀ CHỌN ĐƠN VỊ --- */}
+            <ProductInfoAction
+              product={product}
+              isRx={isRx}
+              isFlashSaleActive={isFlashSaleActive}
+            />
 
             {/* Thông tin tóm tắt */}
             <div className="mb-6 space-y-3 text-sm">
@@ -239,18 +188,6 @@ export default async function ProductDetail(props: {
                   <span className="text-gray-800">{product.manufacturer}</span>
                 </div>
               )}
-            </div>
-
-            {/* Nút mua hàng */}
-            <div className="mt-auto">
-              <AddToCartButton
-                product={{
-                  ...product,
-                  price: isFlashSaleActive
-                    ? product.flash_sale_price
-                    : product.price,
-                }}
-              />
             </div>
 
             {/* Cam kết */}

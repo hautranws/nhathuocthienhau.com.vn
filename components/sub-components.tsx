@@ -57,9 +57,9 @@ export const ProductCard = ({
 
     {/* Phần Hình ảnh và Tên */}
     <div>
-      <div className="h-28 bg-gray-50 rounded mb-2 flex items-center justify-center text-xs text-gray-400 group-hover/prod:scale-105 transition overflow-hidden">
+      <div className="w-full aspect-square bg-white rounded mb-2 flex items-center justify-center text-xs text-gray-400 group-hover/prod:scale-105 transition overflow-hidden relative">
         {img && img.startsWith("http") ? (
-          <img src={img} className="h-full object-contain" alt={title} />
+          <img src={img} className="w-full h-full object-contain" alt={title} />
         ) : (
           <span className="text-3xl">💊</span> // Icon mặc định nếu không có ảnh
         )}

@@ -55,7 +55,7 @@ export default function SearchBar() {
       if (searchTerm.length > 1) {
         const { data } = await supabase
           .from("products")
-          .select("id, title, price, img, old_price")
+          .select("id, title, price, img, old_price, category, is_prescription")
           .ilike("title", `%${searchTerm}%`)
           .limit(5);
 
@@ -194,47 +194,64 @@ export default function SearchBar() {
               </div>
               <div className="max-h-[400px] overflow-y-auto">
                 {suggestions.map((product) => {
-                   // Sử dụng hàm xử lý ảnh mới ở đây
-                   const displayImg = getProductImage(product.img);
-                   
-                   return (
-                      <Link
-                        key={product.id}
-                        href={`/product/${product.id}`}
-                        onClick={() => {
-                          addToHistory(product.title);
-                          setShowSuggestions(false);
-                        }}
-                        className="flex items-center gap-4 p-3 hover:bg-blue-50 transition border-b border-gray-50 last:border-0 group"
-                      >
-                        <div className="w-12 h-12 border rounded bg-white flex items-center justify-center shrink-0">
-                          {displayImg ? (
-                            <img
-                              src={displayImg}
-                              alt={product.title}
-                              className="w-full h-full object-contain p-1"
-                            />
+                  // Sử dụng hàm xử lý ảnh mới ở đây
+                  const displayImg = getProductImage(product.img);
+                  const isRx =
+                    product.category === "Thuốc" && product.is_prescription;
+
+                  return (
+                    <Link
+                      key={product.id}
+                      href={`/product/${product.id}`}
+                      onClick={() => {
+                        addToHistory(product.title);
+                        setShowSuggestions(false);
+                      }}
+                      className="flex items-center gap-4 p-3 hover:bg-blue-50 transition border-b border-gray-50 last:border-0 group"
+                    >
+                      <div className="w-12 h-12 border rounded bg-white flex items-center justify-center shrink-0 relative">
+                        {isRx && (
+                          <div className="absolute -top-1 -left-1 z-10 scale-75 origin-top-left">
+                            <span className="bg-red-600 text-white text-[10px] font-bold px-1 py-0.5 rounded shadow-sm">
+                              Rx
+                            </span>
+                          </div>
+                        )}
+                        {displayImg ? (
+                          <img
+                            src={displayImg}
+                            alt={product.title}
+                            className="w-full h-full object-contain p-1"
+                          />
+                        ) : (
+                          <span className="text-xl">📦</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-gray-800 group-hover:text-blue-700 truncate">
+                          {product.title}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          {isRx ? (
+                            <span className="text-blue-600 font-bold text-xs">
+                              Dược sĩ tư vấn
+                            </span>
                           ) : (
-                            <span className="text-xl">📦</span>
+                            <>
+                              <span className="text-blue-600 font-bold text-sm">
+                                {product.price?.toLocaleString("vi-VN")}đ
+                              </span>
+                              {product.old_price && (
+                                <span className="text-gray-400 text-xs line-through">
+                                  {product.old_price.toLocaleString("vi-VN")}đ
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium text-gray-800 group-hover:text-blue-700 truncate">
-                            {product.title}
-                          </h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-blue-600 font-bold text-sm">
-                              {product.price?.toLocaleString("vi-VN")}đ
-                            </span>
-                            {product.old_price && (
-                              <span className="text-gray-400 text-xs line-through">
-                                {product.old_price.toLocaleString("vi-VN")}đ
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                   );
+                      </div>
+                    </Link>
+                  );
                 })}
               </div>
               <div

@@ -4,6 +4,52 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 
+// --- HÀM NÉN ẢNH ĐỂ TIẾT KIỆM DUNG LƯỢNG (DÙNG CANVAS) ---
+const compressImage = (file: File): Promise<File> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 1000;
+        const scaleSize = MAX_WIDTH / img.width;
+
+        if (img.width > MAX_WIDTH) {
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File(
+                [blob],
+                file.name.replace(/\.[^/.]+$/, "") + ".jpg",
+                {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                },
+              );
+              resolve(compressedFile);
+            }
+          },
+          "image/jpeg",
+          0.7,
+        );
+      };
+    };
+  });
+};
+
 export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
@@ -14,7 +60,7 @@ export default function EditProductPage() {
 
   // --- QUẢN LÝ ẢNH ---
   const [existingImages, setExistingImages] = useState<string[]>([]); // Ảnh cũ từ DB
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);     // File mới chọn từ máy
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]); // File mới chọn từ máy
   const [previewNewUrls, setPreviewNewUrls] = useState<string[]>([]); // Xem trước ảnh mới
 
   // State thông tin sản phẩm
@@ -24,7 +70,13 @@ export default function EditProductPage() {
     old_price: 0,
     category_id: "",
     description: "",
+    sku: "",
+    unit: "Viên",
+    conversion_units: null as any,
   });
+
+  const [hasConversion, setHasConversion] = useState(false);
+  const [conversionUnits, setConversionUnits] = useState<any[]>([]);
 
   useEffect(() => {
     if (id) fetchProductDetail();
@@ -59,13 +111,27 @@ export default function EditProductPage() {
         }
         setExistingImages(images);
 
+        const convUnits = data.conversion_units
+          ? typeof data.conversion_units === "string"
+            ? JSON.parse(data.conversion_units)
+            : data.conversion_units
+          : [];
+
         setProduct({
           title: data.title || "",
           price: data.price || 0,
           old_price: data.old_price || 0,
           category_id: data.category_id || "",
           description: data.description || "",
+          sku: data.sku || "",
+          unit: data.unit || "Viên",
+          conversion_units: convUnits,
         });
+
+        if (convUnits && convUnits.length > 0) {
+          setConversionUnits(convUnits);
+          setHasConversion(true);
+        }
       }
     } catch (error) {
       console.error("Lỗi:", error);
@@ -80,7 +146,7 @@ export default function EditProductPage() {
     const files = e.target.files;
     if (files && files.length > 0) {
       const fileArray = Array.from(files);
-      
+
       // Kiểm tra tổng số ảnh (Cũ + Mới không quá 6)
       if (existingImages.length + fileArray.length > 6) {
         alert("⚠️ Tổng số ảnh (cũ + mới) không được quá 6 hình!");
@@ -96,13 +162,37 @@ export default function EditProductPage() {
 
   const removeExistingImage = (indexToRemove: number) => {
     if (window.confirm("Bạn muốn xóa ảnh này khỏi danh sách?")) {
-      setExistingImages((prev) => prev.filter((_, index) => index !== indexToRemove));
+      setExistingImages((prev) =>
+        prev.filter((_, index) => index !== indexToRemove),
+      );
     }
   };
 
   const removeNewFile = (indexToRemove: number) => {
-    setSelectedFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
-    setPreviewNewUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
+    setSelectedFiles((prev) =>
+      prev.filter((_, index) => index !== indexToRemove),
+    );
+    setPreviewNewUrls((prev) =>
+      prev.filter((_, index) => index !== indexToRemove),
+    );
+  };
+
+  // --- QUẢN LÝ ĐƠN VỊ QUY ĐỔI ---
+  const addConversionUnit = () => {
+    setConversionUnits([
+      ...conversionUnits,
+      { unit_name: "", quantity: 1, price: 0, sku: "" },
+    ]);
+  };
+
+  const updateConversionUnit = (index: number, field: string, value: any) => {
+    const updated = [...conversionUnits];
+    updated[index] = { ...updated[index], [field]: value };
+    setConversionUnits(updated);
+  };
+
+  const removeConversionUnit = (index: number) => {
+    setConversionUnits(conversionUnits.filter((_, i) => i !== index));
   };
 
   // --- LƯU DỮ LIỆU ---
@@ -116,14 +206,18 @@ export default function EditProductPage() {
       // 1. Nếu có ảnh mới -> Upload lên Supabase
       if (selectedFiles.length > 0) {
         for (const file of selectedFiles) {
+          // --- THÊM LOGIC NÉN ẢNH ---
+          const compressedFile = await compressImage(file);
+
           // Tạo tên file ngẫu nhiên để tránh trùng
-          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
-          
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${compressedFile.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+
           const { error: uploadError } = await supabase.storage
             .from("products") // Đảm bảo bucket tên là 'products'
-            .upload(fileName, file);
+            .upload(fileName, compressedFile);
 
-          if (uploadError) throw new Error("Lỗi upload ảnh: " + uploadError.message);
+          if (uploadError)
+            throw new Error("Lỗi upload ảnh: " + uploadError.message);
 
           const { data: urlData } = supabase.storage
             .from("products")
@@ -143,6 +237,9 @@ export default function EditProductPage() {
           img: JSON.stringify(finalImages), // Lưu dưới dạng mảng JSON string
           category_id: product.category_id,
           description: product.description,
+          sku: product.sku || null,
+          unit: product.unit || "Viên",
+          conversion_units: hasConversion ? conversionUnits : null,
         })
         .eq("id", id);
 
@@ -157,44 +254,81 @@ export default function EditProductPage() {
     }
   };
 
-  if (loading) return <div className="p-10 text-center text-gray-500">⏳ Đang tải thông tin...</div>;
+  if (loading)
+    return (
+      <div className="p-10 text-center text-gray-500">
+        ⏳ Đang tải thông tin...
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 font-sans">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         <div className="bg-blue-600 px-6 py-4 flex justify-between items-center">
-          <h1 className="text-white text-xl font-bold">✏️ Chỉnh Sửa Sản Phẩm</h1>
-          <Link href="/admin/inventory" className="text-blue-100 hover:text-white text-sm font-bold">
-              ↩ Quay lại Kho
+          <h1 className="text-white text-xl font-bold">
+            ✏️ Chỉnh Sửa Sản Phẩm
+          </h1>
+          <Link
+            href="/admin/inventory"
+            className="text-blue-100 hover:text-white text-sm font-bold"
+          >
+            ↩ Quay lại Kho
           </Link>
         </div>
 
         <form onSubmit={handleUpdate} className="p-6 space-y-6 text-gray-700">
-          
           {/* Tên sản phẩm */}
-          <div>
-            <label className="block text-sm font-bold mb-1">Tên sản phẩm (*)</label>
-            <input
-              type="text"
-              className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-              value={product.title}
-              onChange={(e) => setProduct({ ...product, title: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold mb-1">
+                Tên sản phẩm (*)
+              </label>
+              <input
+                type="text"
+                className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                value={product.title}
+                onChange={(e) =>
+                  setProduct({ ...product, title: e.target.value })
+                }
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">
+                Mã SKU (Mã sản phẩm)
+              </label>
+              <input
+                type="text"
+                className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="VD: SKU123456"
+                value={product.sku}
+                onChange={(e) =>
+                  setProduct({ ...product, sku: e.target.value })
+                }
+              />
+            </div>
           </div>
 
           {/* --- KHU VỰC QUẢN LÝ ẢNH (MỚI) --- */}
           <div className="bg-gray-50 p-4 rounded border border-dashed border-gray-400">
-            <label className="block text-sm font-bold mb-3">📸 Quản lý hình ảnh (Tối đa 6)</label>
-            
+            <label className="block text-sm font-bold mb-3">
+              📸 Quản lý hình ảnh (Tối đa 6)
+            </label>
+
             {/* 1. Danh sách ảnh cũ */}
             {existingImages.length > 0 && (
               <div className="mb-4">
-                <p className="text-xs text-gray-500 mb-2">Ảnh hiện có (Bấm vào ❌ để xóa):</p>
+                <p className="text-xs text-gray-500 mb-2">
+                  Ảnh hiện có (Bấm vào ❌ để xóa):
+                </p>
                 <div className="grid grid-cols-4 gap-2">
                   {existingImages.map((url, idx) => (
                     <div key={idx} className="relative group w-20 h-20">
-                      <img src={url} alt="old" className="w-full h-full object-cover rounded border bg-white" />
+                      <img
+                        src={url}
+                        alt="old"
+                        className="w-full h-full object-cover rounded border bg-white"
+                      />
                       <button
                         type="button"
                         onClick={() => removeExistingImage(idx)}
@@ -211,27 +345,35 @@ export default function EditProductPage() {
 
             {/* 2. Upload ảnh mới */}
             <div className="mt-2">
-               <label className="cursor-pointer bg-blue-100 text-blue-700 px-4 py-2 rounded font-bold hover:bg-blue-200 inline-block transition">
-                 📂 Chọn thêm ảnh từ máy tính
-                 <input 
-                   type="file" 
-                   multiple 
-                   accept="image/*" 
-                   onChange={handleFileChange} 
-                   className="hidden" 
-                 />
-               </label>
-               <p className="text-xs text-gray-400 mt-1 italic">Giữ phím Ctrl để chọn nhiều ảnh cùng lúc.</p>
+              <label className="cursor-pointer bg-blue-100 text-blue-700 px-4 py-2 rounded font-bold hover:bg-blue-200 inline-block transition">
+                📂 Chọn thêm ảnh từ máy tính
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+              <p className="text-xs text-gray-400 mt-1 italic">
+                Giữ phím Ctrl để chọn nhiều ảnh cùng lúc.
+              </p>
             </div>
 
             {/* 3. Preview ảnh mới chọn */}
             {previewNewUrls.length > 0 && (
               <div className="mt-4 border-t pt-2">
-                <p className="text-xs text-green-600 mb-2 font-bold">Ảnh mới chuẩn bị upload:</p>
+                <p className="text-xs text-green-600 mb-2 font-bold">
+                  Ảnh mới chuẩn bị upload:
+                </p>
                 <div className="grid grid-cols-4 gap-2">
                   {previewNewUrls.map((url, idx) => (
                     <div key={idx} className="relative w-20 h-20">
-                      <img src={url} alt="new" className="w-full h-full object-cover rounded border border-green-400" />
+                      <img
+                        src={url}
+                        alt="new"
+                        className="w-full h-full object-cover rounded border border-green-400"
+                      />
                       <button
                         type="button"
                         onClick={() => removeNewFile(idx)}
@@ -249,46 +391,199 @@ export default function EditProductPage() {
           {/* ------------------------- */}
 
           {/* Giá cả */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-bold mb-1 text-red-600">Giá bán (VNĐ)</label>
+              <label className="block text-sm font-bold mb-1 text-red-600">
+                Giá bán (VNĐ)
+              </label>
               <input
                 type="number"
                 className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none font-bold"
                 value={product.price}
-                onChange={(e) => setProduct({ ...product, price: Number(e.target.value) })}
+                onChange={(e) =>
+                  setProduct({ ...product, price: Number(e.target.value) })
+                }
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-bold mb-1 text-gray-500">Giá cũ (nếu có)</label>
+              <label className="block text-sm font-bold mb-1 text-gray-500">
+                Giá cũ (nếu có)
+              </label>
               <input
                 type="number"
                 className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                 value={product.old_price}
-                onChange={(e) => setProduct({ ...product, old_price: Number(e.target.value) })}
+                onChange={(e) =>
+                  setProduct({ ...product, old_price: Number(e.target.value) })
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">
+                Đơn vị gốc (Hộp/Vỉ)
+              </label>
+              <input
+                type="text"
+                className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="VD: Hộp"
+                value={product.unit}
+                onChange={(e) =>
+                  setProduct({ ...product, unit: e.target.value })
+                }
               />
             </div>
           </div>
 
+          {/* --- CHỨC NĂNG QUY ĐỔI ĐƠN VỊ --- */}
+          <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-blue-800 flex items-center gap-2">
+                  Chức năng quy đổi đơn vị
+                  <span
+                    className="text-blue-500 cursor-help"
+                    title="Dùng khi sản phẩm có nhiều cách đóng gói: Viên, Vỉ, Hộp..."
+                  >
+                    ⓘ
+                  </span>
+                </h3>
+                <p className="text-sm text-blue-600">
+                  Tạo và quy đổi các đơn vị tính khác nhau (VD: 1 Hộp = 10 Vỉ)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!hasConversion && conversionUnits.length === 0) {
+                    addConversionUnit();
+                  }
+                  setHasConversion(!hasConversion);
+                }}
+                className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none ${hasConversion ? "bg-blue-600" : "bg-gray-300"}`}
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${hasConversion ? "translate-x-6" : ""}`}
+                />
+              </button>
+            </div>
+
+            {hasConversion && (
+              <div className="space-y-4 mt-4">
+                <div className="hidden md:grid grid-cols-12 gap-4 text-xs font-bold text-gray-500 uppercase px-2">
+                  <div className="col-span-3">Đơn vị quy đổi</div>
+                  <div className="col-span-2">Số lượng (quy từ gốc)</div>
+                  <div className="col-span-3">Giá bán</div>
+                  <div className="col-span-3">SKU đơn vị</div>
+                  <div className="col-span-1"></div>
+                </div>
+
+                {conversionUnits.map((item, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white p-3 rounded-lg border border-gray-200"
+                  >
+                    <div className="col-span-3">
+                      <input
+                        type="text"
+                        placeholder="Tên đơn vị (Vỉ/Viên...)"
+                        className="w-full p-2 border rounded text-sm"
+                        value={item.unit_name}
+                        onChange={(e) =>
+                          updateConversionUnit(
+                            index,
+                            "unit_name",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <input
+                        type="number"
+                        placeholder="SL"
+                        className="w-full p-2 border rounded text-sm text-center"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateConversionUnit(
+                            index,
+                            "quantity",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        type="number"
+                        placeholder="Giá quy đổi"
+                        className="w-full p-2 border rounded text-sm font-bold text-red-600"
+                        value={item.price}
+                        onChange={(e) =>
+                          updateConversionUnit(index, "price", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        type="text"
+                        placeholder="Mã SKU riêng"
+                        className="w-full p-2 border rounded text-sm"
+                        value={item.sku}
+                        onChange={(e) =>
+                          updateConversionUnit(index, "sku", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="col-span-1 text-right">
+                      <button
+                        type="button"
+                        onClick={() => removeConversionUnit(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addConversionUnit}
+                  className="w-full py-2 border-2 border-dashed border-blue-300 text-blue-500 rounded-lg hover:bg-blue-50 font-medium text-sm transition"
+                >
+                  + Thêm đơn vị quy đổi khác
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Danh mục & Mô tả */}
           <div>
-            <label className="block text-sm font-bold mb-1">Mã Danh Mục (Category ID)</label>
+            <label className="block text-sm font-bold mb-1">
+              Mã Danh Mục (Category ID)
+            </label>
             <input
               type="text"
               className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
               value={product.category_id}
-              onChange={(e) => setProduct({ ...product, category_id: e.target.value })}
+              onChange={(e) =>
+                setProduct({ ...product, category_id: e.target.value })
+              }
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold mb-1">Mô tả chi tiết</label>
+            <label className="block text-sm font-bold mb-1">
+              Mô tả chi tiết
+            </label>
             <textarea
               rows={5}
               className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
               value={product.description}
-              onChange={(e) => setProduct({ ...product, description: e.target.value })}
+              onChange={(e) =>
+                setProduct({ ...product, description: e.target.value })
+              }
             />
           </div>
 
@@ -298,17 +593,19 @@ export default function EditProductPage() {
               type="submit"
               disabled={updating}
               className={`flex-1 py-3 rounded-lg font-bold text-white text-lg shadow transition ${
-                updating ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                updating
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
               }`}
             >
               {updating ? "⏳ Đang lưu & Upload..." : "💾 LƯU THAY ĐỔI"}
             </button>
-            
+
             <Link
-                href="/admin/inventory"
-                className="px-8 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 flex items-center justify-center transition"
+              href="/admin/inventory"
+              className="px-8 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 flex items-center justify-center transition"
             >
-                Hủy
+              Hủy
             </Link>
           </div>
         </form>

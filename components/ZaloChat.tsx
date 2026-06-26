@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 
 // 👇 BẠN CÓ THỂ THAY ĐỔI LINK ẢNH DƯỢC SĨ Ở ĐÂY
 // Sau khi có ảnh thật, hãy đổi dòng này thành: const avatarUrl = "/images/duoc-si-avatar.png";
-const avatarUrl = "https://cdn-icons-png.flaticon.com/512/3304/3304567.png";
+const zaloLogoUrl = "https://img.icons8.com/color/48/zalo.png";
 
 export default function ZaloChat() {
   // Danh sách câu thoại
@@ -62,14 +62,13 @@ export default function ZaloChat() {
         }`}
         style={{ maxWidth: "280px" }}
       >
-        {/* 1. Ảnh Avatar Dược sĩ (Bên trái) */}
+        {/* 1. Logo Zalo (Bên trái) */}
         <div className="flex-shrink-0 relative z-10">
-          <div className="w-12 h-12 rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] overflow-hidden bg-blue-50">
-            {/* Dùng thẻ img thường cho đơn giản, có thể thay bằng next/image */}
+          <div className="w-12 h-12 rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.15)] overflow-hidden bg-white p-1">
             <img
-              src={avatarUrl}
-              alt="Dược sĩ tư vấn"
-              className="w-full h-full object-cover"
+              src={zaloLogoUrl}
+              alt="Zalo"
+              className="w-full h-full object-contain"
             />
           </div>
           {/* Chấm xanh online */}
@@ -113,17 +112,12 @@ export default function ZaloChat() {
         {/* Hiệu ứng sóng lan tỏa nhẹ */}
         <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-30 animate-ping"></span>
 
-        {/* Icon Zalo SVG chuẩn màu trắng */}
-        <svg
-          className="w-8 h-8 text-white relative z-10 fill-current"
-          viewBox="0 0 48 48"
-        >
-          <path
-            d="M24 4C14 4 5 11 5 20c0 4.3 2 8 6 11l-2 8 9-4c2 1 4 1 6 1 10 0 19-7 19-16S34 4 24 4z"
-            fill="none"
-          />
-          <path d="M37.8 21.6c0-6.8-6.1-12.3-13.6-12.3C16.6 9.3 10.5 14.8 10.5 21.6c0 3.8 1.9 7.2 4.9 9.5-.2 1.8-1.2 4.2-1.3 4.3 2.9-2 5.6-2.5 7.1-2.5 6.6-.5 11.9-5.6 11.9-11.9zm-22.3 0c0-4.6 4.3-8.3 9.6-8.3s9.6 3.7 9.6 8.3-4.3 8.3-9.6 8.3c-1.1 0-3.1 0-5.6 1.8.6-1.5 1-3.2 1-3.5-.8-1.8-1.3-3.8-1.3-6.6h-3.7z" />
-        </svg>
+        {/* Logo Zalo Image thay cho SVG cũ */}
+        <img
+          src={zaloLogoUrl}
+          alt="Zalo"
+          className="w-8 h-8 relative z-10 object-contain"
+        />
       </a>
     </div>
   );

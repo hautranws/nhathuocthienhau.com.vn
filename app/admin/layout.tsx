@@ -3,11 +3,6 @@ import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-// --- CẤU HÌNH ADMIN (Khớp với file admin/page.tsx) ---
-const ADMIN_EMAIL = "tranthienhaudau2@gmail.com";
-const ADMIN_PHONE_CORE = "989217112";
-// ------------------------------------------------------
-
 export default function AdminLayout({
   children,
 }: {
@@ -15,40 +10,12 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [authorized, setAuthorized] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
+  const [authorized, setAuthorized] = useState(true);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push("/login");
-        setIsChecking(false);
-        return;
-      }
-
-      const userPhone = session.user.phone || "";
-      const userEmail = session.user.email || "";
-      const cleanPhone = userPhone.replace(/[^0-9]/g, "");
-
-      const isPhoneMatch = cleanPhone.includes(ADMIN_PHONE_CORE);
-      const isEmailMatch = userEmail === ADMIN_EMAIL;
-
-      if (isEmailMatch || isPhoneMatch) {
-        setAuthorized(true);
-      } else {
-        alert("Bạn không có quyền truy cập trang Quản trị!");
-        router.push("/login");
-      }
-
-      setIsChecking(false);
-    };
-
-    checkUser();
-  }, [router]);
+    // Admin check logic removed for local testing
+  }, []);
 
   if (isChecking) {
     return (

@@ -15,7 +15,9 @@ export default async function SearchPage({
   if (query) {
     const { data } = await supabase
       .from("products")
-      .select("id, title, price, old_price, img, discount, category")
+      .select(
+        "id, title, price, old_price, img, discount, category, is_prescription, unit, specification, conversion_units",
+      )
       .ilike("title", `%${query}%`)
       .limit(100);
 

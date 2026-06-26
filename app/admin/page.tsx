@@ -2,6 +2,8 @@
 import React from "react";
 import Link from "next/link";
 
+import AdminHomepageManager from "@/components/admin/AdminHomepageManager";
+
 export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6 font-sans">
@@ -20,10 +22,26 @@ export default function AdminDashboard() {
               📦
             </div>
             <h3 className="text-xl font-bold text-blue-800 text-center">
-              Sản phẩm
+              Danh sách SP
             </h3>
             <p className="text-gray-500 text-xs mt-1 text-center">
-              Quản lý danh sách SP
+              Quản lý & Chỉnh sửa
+            </p>
+          </Link>
+
+          {/* 1b. Thêm sản phẩm */}
+          <Link
+            href="/admin/add"
+            className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-md border-2 border-transparent hover:border-yellow-500 hover:shadow-xl transition cursor-pointer group"
+          >
+            <div className="text-5xl mb-3 group-hover:scale-110 transition">
+              ➕
+            </div>
+            <h3 className="text-xl font-bold text-yellow-700 text-center">
+              Thêm sản phẩm
+            </h3>
+            <p className="text-gray-500 text-xs mt-1 text-center">
+              Tạo sản phẩm mới
             </p>
           </Link>
 
@@ -155,6 +173,9 @@ export default function AdminDashboard() {
             </p>
           </Link>
         </div>
+
+        {/* Quản lý sản phẩm trang chủ */}
+        <AdminHomepageManager />
       </div>
     </div>
   );

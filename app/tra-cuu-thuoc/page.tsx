@@ -213,7 +213,7 @@ export default function TraCuuThuocPage({
                       className="group flex gap-4 p-4 rounded-lg border border-gray-100 hover:bg-blue-50 hover:border-blue-200 transition cursor-pointer bg-white"
                     >
                       {/* Ảnh nhỏ */}
-                      <div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 border rounded-md overflow-hidden bg-white flex items-center justify-center">
+                      <div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 border rounded-md overflow-hidden bg-white flex items-center justify-center relative aspect-square">
                         {displayImg ? (
                           <img
                             src={displayImg}

@@ -7,33 +7,40 @@ import { createVNPayUrl } from "../../../../lib/payment/vnpay";
 import { createMoMoUrl } from "../../../../lib/payment/momo";
 import { createPayOSLink } from "../../../../lib/payment/payos";
 
+// Import Zalo OA functions
+import {
+  sendZaloOAMessage,
+  generateOrderMessage,
+} from "../../../../lib/payment/zalo-oa";
+
 // ==================================================================
 // ⚙️ CẤU HÌNH GỬI THÔNG BÁO (BẠN ĐIỀN THÔNG TIN VÀO ĐÂY NHÉ)
 // ==================================================================
 
 const EMAIL_CONFIG = {
   // 1. Email dùng để gửi thông báo (VD: nhathuocthienhau@gmail.com)
-  user: "thienduoc.thienhau@gmail.com", 
-  
+  user: "thienduoc.thienhau@gmail.com",
+
   // 2. Mật khẩu ứng dụng 16 chữ cái (KHÔNG phải mật khẩu đăng nhập Gmail)
-  pass: "raew vtrg lkda ocwd", 
-  
+  pass: "raew vtrg lkda ocwd",
+
   // 3. Email nhận thông báo khi có đơn mới (có thể giống email trên)
   staffEmail: "hautranws@gmail.com,phamanhthu1804@gmail.com",
 };
 
 const ZALO_CONFIG = {
   // 👇 1. App ID (Lấy từ ảnh bạn gửi lúc nãy)
-  appId: "3298941731019507413", 
-  
+  appId: "3298941731019507413",
+
   // 👇 2. Secret Key (Vào trang Zalo Developer -> Cài đặt -> Copy Khóa bí mật)
-  secretKey: "29SHEYUvS88YNm6peVST", 
+  secretKey: "29SHEYUvS88YNm6peVST",
 
   // 👇 3. Refresh Token (Lấy từ API Explorer, nhớ copy dòng Refresh Token chứ không phải Access Token)
-  refreshToken: "QqLTAgms3Y9ZIbSlhJ049cDCMYkkANn37rLQDeLHIJuPBtGrYI8lHWS72nIQVbXQ9rbN8gzcQtiaL3CpldGjLp5HDHk-RH1I4M8pEPnPQsPNIrPtxMfmB5XtILwBJ4rN4pLICgbC2beDCJ44mKzi3mjlN6EVTdyd0r9PBCzANsDwDMqjyGWrF7Wx6pNG729x7W4n8Ay8Q4rW1qr2r05A3c80LG7N7mn4QmSYCi053bHcA1CEyb4jPsfV4p_1TXzBJMiO5C9u86bGQmq2-nHN26WsJM2l26WmQN9AVDrhVoHtOdjf-qDb55fiIdw9NM4jBr99Uu9SQoOp8KDqf3n81Gu-OLI9G3jT6saPBu0RH4bB66KPtpvUOaCFVZ7fSKjiVdmL9B5O2dTuAYv-uGus9aV-IseyeI0490",
+  refreshToken:
+    "3Y4ZS6sLiam6BYbrR9EuI0Oe975lYjnDN7CwBcwdqMniMaulSkA8JsC3OXvksVmZRZmtSrNvqnL-0qjSPi3RDqq7EqzsvlW5NbC3EdMccbrvIreDLOksJsPlA2zGsiHiJYGgBKFDxNHuBnCFUkdpK18XBcW0wh9NFobO9IFBns5CAY4-RzBaT0q_7mmSok5937uHCsV3_0rJUXDJQfw8AL9ATX1fbQz7LczI1tdJmZvg9Z1IGV-W0qCWJMT3dhO0GrzAQb62rmuoHaf7FBYn0W4PSZm--9rNL2v_9LVsuNeu000wKlZP7p0Y9NXSn-4wMNCFLLkLv1HiAW0jPvRfVmjV4qGeg_K88KeBGKgEwZfREYm0PDlfQaWa215-cvPISY5_0c30Wd9v2MKLREU_C08nT7Sfy-quMeoe2623k4e",
 
   // 👇 4. ID Mẫu tin ZNS (Lấy sau khi Zalo duyệt mẫu)
-  templateId: "ID_MAU_TIN_ZNS_CUA_BAN", 
+  templateId: "ID_MAU_TIN_ZNS_CUA_BAN",
 };
 
 // ==================================================================
@@ -48,6 +55,9 @@ export async function POST(req: Request) {
       paymentMethod,
       couponCode,
       userId: clientUserId,
+    } = body;
+    const { name, phone, address, note } = customer;
+
     } = body;
     const { name, phone, address, note } = customer;
 
@@ -177,7 +187,11 @@ export async function POST(req: Request) {
         const totalStr = finalAmount.toLocaleString("vi-VN");
 
         // 1. GỬI EMAIL (Sẽ hoạt động khi bạn điền đúng EMAIL_CONFIG ở trên)
-        if (EMAIL_CONFIG.user && EMAIL_CONFIG.pass && !EMAIL_CONFIG.user.includes("[THAY-DONG-NAY")) {
+        if (
+          EMAIL_CONFIG.user &&
+          EMAIL_CONFIG.pass &&
+          !EMAIL_CONFIG.user.includes("[THAY-DONG-NAY")
+        ) {
           console.log("🚀 Đang gửi Email báo đơn hàng...");
           const transporter = nodemailer.createTransport({
             service: "gmail",
@@ -229,68 +243,115 @@ export async function POST(req: Request) {
           await transporter.sendMail(mailOptions);
           console.log("✅ Gửi Email thành công!");
         } else {
-           console.log("⚠️ Bỏ qua gửi Email vì chưa điền Cấu hình.");
+          console.log("⚠️ Bỏ qua gửi Email vì chưa điền Cấu hình.");
         }
 
-        // 2. GỬI TIN NHẮN ZALO ZNS (GIỮ NGUYÊN)
-        if (ZALO_CONFIG.refreshToken && phone) {
-            if (ZALO_CONFIG.templateId === "ID_MAU_TIN_ZNS_CUA_BAN") {
-                 console.log("⚠️ CHƯA GỬI ZALO: Bạn chưa điền Template ID.");
+        // 2. GỬI TIN NHẮN ZALO OA (HÀNG CHÍNH, KHÔNG CẦN TEMPLATE)
+        if (
+          ZALO_CONFIG.appId &&
+          ZALO_CONFIG.secretKey &&
+          ZALO_CONFIG.refreshToken &&
+          phone
+        ) {
+          try {
+            console.log("🚀 Đang gửi Zalo OA message...");
+
+            const orderMessage = generateOrderMessage({
+              orderId,
+              name,
+              items,
+              total: finalAmount,
+              address,
+              paymentMethod,
+              note,
+            });
+
+            const result = await sendZaloOAMessage(
+              ZALO_CONFIG.appId,
+              ZALO_CONFIG.secretKey,
+              ZALO_CONFIG.refreshToken,
+              phone,
+              orderMessage,
+            );
+
+            if (result.success) {
+              console.log("✅ Gửi Zalo OA thành công!");
             } else {
-                 console.log("🚀 Đang xử lý Zalo ZNS...");
-                 let newAccessToken = "";
-                 try {
-                     const tokenRes = await fetch("https://oauth.zaloapp.com/v4/oa/access_token", {
-                         method: "POST",
-                         headers: {
-                             "Content-Type": "application/x-www-form-urlencoded",
-                             "secret_key": ZALO_CONFIG.secretKey
-                         },
-                         body: new URLSearchParams({
-                             refresh_token: ZALO_CONFIG.refreshToken,
-                             app_id: ZALO_CONFIG.appId,
-                             grant_type: "refresh_token"
-                         })
-                     });
-                     const tokenData = await tokenRes.json();
-                     if (tokenData.access_token) {
-                         newAccessToken = tokenData.access_token;
-                         console.log("✅ Đã làm mới Access Token Zalo thành công!");
-                     }
-                 } catch (tokenErr) {
-                     console.error("❌ Lỗi kết nối Zalo Auth:", tokenErr);
-                 }
-
-                 if (newAccessToken) {
-                     let zaloPhone = phone.trim();
-                     if (zaloPhone.startsWith("0")) zaloPhone = "84" + zaloPhone.substring(1);
-                     zaloPhone = zaloPhone.replace(/\D/g, '');
-
-                     const znsRes = await fetch("https://business.openapi.zalo.me/message/template", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "access_token": newAccessToken 
-                        },
-                        body: JSON.stringify({
-                            phone: zaloPhone,
-                            template_id: ZALO_CONFIG.templateId,
-                            template_data: {
-                                customer_name: name,
-                                order_code: String(orderId),
-                                total_amount: totalStr + " đ",
-                                status: "Đang xử lý"
-                            },
-                            tracking_id: String(orderId)
-                        })
-                     });
-
-                     const znsData = await znsRes.json();
-                     if (znsData.error !== 0) console.error("❌ Lỗi gửi ZNS:", znsData);
-                 }
+              console.error("❌ Lỗi gửi Zalo OA:", result.error);
             }
+          } catch (zaloOAError) {
+            console.error("❌ Exception khi gửi Zalo OA:", zaloOAError);
+          }
+        } else {
+          console.log("⚠️ Bỏ qua Zalo OA vì chưa điền đầy đủ Cấu hình.");
         }
 
+        // 3. GỬI TIN NHẮN ZALO ZNS (TEMPLATE - TÙY CHỌN)
+        if (ZALO_CONFIG.refreshToken && phone) {
+          if (ZALO_CONFIG.templateId === "ID_MAU_TIN_ZNS_CUA_BAN") {
+            console.log("⚠️ CHƯA GỬI ZALO ZNS: Bạn chưa điền Template ID.");
+          } else {
+            console.log("🚀 Đang xử lý Zalo ZNS...");
+            let newAccessToken = "";
+            try {
+              const tokenRes = await fetch(
+                "https://oauth.zaloapp.com/v4/oa/access_token",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    secret_key: ZALO_CONFIG.secretKey,
+                  },
+                  body: new URLSearchParams({
+                    refresh_token: ZALO_CONFIG.refreshToken,
+                    app_id: ZALO_CONFIG.appId,
+                    grant_type: "refresh_token",
+                  }),
+                },
+              );
+              const tokenData = await tokenRes.json();
+              if (tokenData.access_token) {
+                newAccessToken = tokenData.access_token;
+                console.log("✅ Đã làm mới Access Token Zalo thành công!");
+              }
+            } catch (tokenErr) {
+              console.error("❌ Lỗi kết nối Zalo Auth:", tokenErr);
+            }
+
+            if (newAccessToken) {
+              let zaloPhone = phone.trim();
+              if (zaloPhone.startsWith("0"))
+                zaloPhone = "84" + zaloPhone.substring(1);
+              zaloPhone = zaloPhone.replace(/\D/g, "");
+
+              const znsRes = await fetch(
+                "https://business.openapi.zalo.me/message/template",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    access_token: newAccessToken,
+                  },
+                  body: JSON.stringify({
+                    phone: zaloPhone,
+                    template_id: ZALO_CONFIG.templateId,
+                    template_data: {
+                      customer_name: name,
+                      order_code: String(orderId),
+                      total_amount: totalStr + " đ",
+                      status: "Đang xử lý",
+                    },
+                    tracking_id: String(orderId),
+                  }),
+                },
+              );
+
+              const znsData = await znsRes.json();
+              if (znsData.error !== 0)
+                console.error("❌ Lỗi gửi ZNS:", znsData);
+            }
+          }
+        }
       } catch (notifyError) {
         console.error("❌ Lỗi gửi thông báo:", notifyError);
       }
@@ -308,14 +369,26 @@ export async function POST(req: Request) {
       case "VNPAY":
       case "ATM":
       case "VISA":
-        paymentUrl = createVNPayUrl({ orderId, amount: amountToPay, orderInfo });
+        paymentUrl = createVNPayUrl({
+          orderId,
+          amount: amountToPay,
+          orderInfo,
+        });
         break;
       case "MOMO":
-        paymentUrl = await createMoMoUrl({ orderId, amount: amountToPay, orderInfo });
+        paymentUrl = await createMoMoUrl({
+          orderId,
+          amount: amountToPay,
+          orderInfo,
+        });
         break;
       case "BANK":
       case "PAYOS":
-        const payOSData = await createPayOSLink({ orderId: Number(orderId), amount: amountToPay, description: orderInfo });
+        const payOSData = await createPayOSLink({
+          orderId: Number(orderId),
+          amount: amountToPay,
+          description: orderInfo,
+        });
         paymentUrl = payOSData.checkoutUrl;
         break;
       default:

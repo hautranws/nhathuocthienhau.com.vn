@@ -12,6 +12,10 @@ interface Product {
   img?: string;
   discount?: string;
   category: string;
+  is_prescription?: boolean;
+  unit?: string;
+  specification?: string;
+  conversion_units?: string | any;
 }
 
 const getThumbnail = (imgData: string) => {
@@ -24,44 +28,144 @@ const getThumbnail = (imgData: string) => {
   }
 };
 
-const ProductItem = ({ product }: { product: Product }) => (
-  <Link
-    href={`/product/${product.id}`}
-    className="block group bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-lg transition overflow-hidden"
-  >
-    <div className="relative w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
-      {product.discount && (
-        <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded font-bold z-10">
-          {product.discount}
-        </span>
-      )}
-      {product.img ? (
-        <img
-          src={getThumbnail(product.img)}
-          alt={product.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-      ) : (
-        <span className="text-4xl">📦</span>
-      )}
-    </div>
-    <div className="p-4">
-      <h3 className="font-bold text-gray-800 text-sm line-clamp-2 mb-2 min-h-[40px] group-hover:text-blue-700 transition-colors">
-        {product.title}
-      </h3>
-      <div className="flex items-baseline gap-2">
-        <span className="text-blue-600 font-bold text-lg">
-          {product.price?.toLocaleString("vi-VN")}đ
-        </span>
-        {product.old_price && (
-          <span className="text-gray-400 text-xs line-through">
-            {product.old_price.toLocaleString("vi-VN")}đ
-          </span>
+const ProductItem = ({ product }: { product: Product }) => {
+  const isRx = product.category === "Thuốc" && product.is_prescription;
+
+  // --- LOGIC QUY ĐỔI ĐƠN VỊ ---
+  const [selectedUnit, setSelectedUnit] = React.useState<any>(null);
+
+  const units = React.useMemo(() => {
+    let result = [];
+    result.push({
+      unit_name: product.unit || "Đơn vị",
+      price: product.price,
+      is_base: true,
+    });
+
+    if (product.conversion_units) {
+      try {
+        const parsed =
+          typeof product.conversion_units === "string"
+            ? JSON.parse(product.conversion_units)
+            : product.conversion_units;
+        if (Array.isArray(parsed)) {
+          result = [...result, ...parsed];
+        }
+      } catch (e) {}
+    }
+    return result;
+  }, [product]);
+
+  React.useEffect(() => {
+    if (units.length > 0 && !selectedUnit) {
+      setSelectedUnit(units[units.length - 1]);
+    }
+  }, [units, selectedUnit]);
+
+  const currentPrice = selectedUnit ? selectedUnit.price : product.price;
+  const currentUnitName = selectedUnit ? selectedUnit.unit_name : product.unit;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-lg transition overflow-hidden h-full flex flex-col p-3 relative group">
+      <Link href={`/product/${product.id}`} className="block">
+        <div className="relative w-full aspect-square bg-white flex items-center justify-center overflow-hidden rounded-lg">
+          {isRx && (
+            <div className="absolute top-2 left-2 z-10">
+              <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                Rx
+              </span>
+            </div>
+          )}
+          {product.discount && !isRx && (
+            <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded font-bold z-10">
+              {product.discount}
+            </span>
+          )}
+          {product.img ? (
+            <img
+              src={getThumbnail(product.img)}
+              alt={product.title}
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <span className="text-4xl">📦</span>
+          )}
+        </div>
+      </Link>
+
+      <div className="pt-3 flex flex-col flex-1">
+        <Link href={`/product/${product.id}`} className="block mb-2">
+          <h3 className="font-bold text-gray-800 text-sm line-clamp-2 min-h-[40px] group-hover:text-blue-700 transition-colors">
+            {product.title}
+          </h3>
+        </Link>
+
+        {/* Bộ chọn đơn vị */}
+        {!isRx && units.length > 1 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {units.map((u: any, idx: number) => (
+              <button
+                key={idx}
+                onClick={() => setSelectedUnit(u)}
+                className={`px-2 py-0.5 text-[10px] font-bold rounded border transition-all ${
+                  selectedUnit?.unit_name === u.unit_name
+                    ? "border-blue-600 bg-blue-50 text-blue-600"
+                    : "border-gray-100 bg-gray-50 text-gray-400"
+                }`}
+              >
+                {u.unit_name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1 mb-3">
+          {isRx ? (
+            <span className="text-gray-500 text-xs mt-auto">
+              Cần tư vấn từ dược sĩ
+            </span>
+          ) : (
+            <div className="flex items-baseline gap-2 mt-auto">
+              <span className="text-blue-600 font-bold text-lg">
+                {Number(currentPrice).toLocaleString("vi-VN")}đ
+              </span>
+              <span className="text-gray-400 text-[10px]">
+                / {currentUnitName}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {product.specification && (
+          <div className="mb-3">
+            <span className="bg-gray-100 text-gray-500 text-[9px] px-1.5 py-0.5 rounded border border-gray-200">
+              {product.specification}
+            </span>
+          </div>
+        )}
+
+        {isRx ? (
+          <a
+            href="https://zalo.me/0988991837"
+            target="_blank"
+            className="w-full bg-blue-50 text-blue-600 font-bold py-2 rounded-full text-xs text-center border border-blue-100 mt-auto"
+          >
+            Tư vấn ngay
+          </a>
+        ) : (
+          <button
+            className="w-full bg-blue-600 text-white font-bold py-2 rounded-full text-xs text-center mt-auto active:scale-95 transition-transform"
+            onClick={() => {
+              /* handle click */
+            }}
+          >
+            Chọn mua
+          </button>
         )}
       </div>
     </div>
-  </Link>
-);
+  );
+};
 
 interface SearchClientProps {
   initialQuery: string;

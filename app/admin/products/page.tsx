@@ -29,7 +29,7 @@ export default function ProductManagementPage() {
       const { count } = await supabase
         .from("products")
         .select("*", { count: "exact", head: true });
-      
+
       setTotalProducts(count || 0);
 
       // 2. Tính toán phân đoạn
@@ -47,10 +47,14 @@ export default function ProductManagementPage() {
         setDebugInfo(`❌ Lỗi: ${error.message}`);
       } else {
         if (!data || data.length === 0) {
-          setDebugInfo("✅ Kết nối tốt, nhưng chưa có sản phẩm nào ở trang này.");
+          setDebugInfo(
+            "✅ Kết nối tốt, nhưng chưa có sản phẩm nào ở trang này.",
+          );
           setProducts([]);
         } else {
-          setDebugInfo(`✅ Đang hiển thị ${data.length} sản phẩm (Trang ${currentPage}).`);
+          setDebugInfo(
+            `✅ Đang hiển thị ${data.length} sản phẩm (Trang ${currentPage}).`,
+          );
           setProducts(data);
         }
       }
@@ -93,7 +97,9 @@ export default function ProductManagementPage() {
     <div className="min-h-screen bg-gray-100 p-8 font-sans">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-blue-900">📦 QUẢN LÝ KHO (Trang {currentPage})</h1>
+          <h1 className="text-3xl font-bold text-blue-900">
+            📦 QUẢN LÝ KHO (Trang {currentPage})
+          </h1>
           <Link
             href="/admin/products/add" // Lưu ý: Code cũ của bạn link là /admin/products/add
             // Nếu bạn dùng /admin/add như ở Dashboard thì sửa lại cho khớp nhé
@@ -113,6 +119,7 @@ export default function ProductManagementPage() {
             <thead className="bg-blue-50 text-blue-800 font-bold">
               <tr>
                 <th className="p-4">ID</th>
+                <th className="p-4">SKU</th>
                 <th className="p-4">Ảnh</th>
                 <th className="p-4">Tên sản phẩm</th>
                 <th className="p-4">Giá</th>
@@ -123,7 +130,7 @@ export default function ProductManagementPage() {
               {loading ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-gray-500">
-                     ⏳ Đang tải dữ liệu...
+                    ⏳ Đang tải dữ liệu...
                   </td>
                 </tr>
               ) : products.length === 0 ? (
@@ -136,6 +143,9 @@ export default function ProductManagementPage() {
                 products.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className="p-4 text-gray-500">#{p.id}</td>
+                    <td className="p-4 text-gray-700 font-mono text-sm">
+                      {p.sku || "N/A"}
+                    </td>
                     <td className="p-4">
                       {p.img ? (
                         <img
@@ -148,7 +158,12 @@ export default function ProductManagementPage() {
                         "No Img"
                       )}
                     </td>
-                    <td className="p-4 font-medium max-w-xs truncate" title={p.title}>{p.title}</td>
+                    <td
+                      className="p-4 font-medium max-w-xs truncate"
+                      title={p.title}
+                    >
+                      {p.title}
+                    </td>
                     <td className="p-4 text-blue-600 font-bold">
                       {Number(p.price).toLocaleString()}đ
                     </td>
@@ -175,33 +190,46 @@ export default function ProductManagementPage() {
           {/* --- [CODE MỚI] THANH PHÂN TRANG --- */}
           {!loading && totalProducts > 0 && (
             <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
-               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                 <div>
-                    <p className="text-sm text-gray-700">
-                      Hiển thị <span className="font-medium">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> đến <span className="font-medium">{Math.min(currentPage * ITEMS_PER_PAGE, totalProducts)}</span> trong <span className="font-medium">{totalProducts}</span> kết quả
-                    </p>
-                 </div>
-                 <div className="flex gap-2">
-                    <button
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                        className={`px-3 py-1 border rounded ${currentPage === 1 ? 'bg-gray-200 text-gray-400' : 'bg-white hover:bg-gray-100'}`}
-                    >
-                        Trước
-                    </button>
-                    {/* Hiển thị số trang đơn giản */}
-                    <span className="px-3 py-1 border bg-blue-50 text-blue-600 font-bold rounded">
-                        Trang {currentPage} / {totalPages}
-                    </span>
-                    <button
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                        className={`px-3 py-1 border rounded ${currentPage === totalPages ? 'bg-gray-200 text-gray-400' : 'bg-white hover:bg-gray-100'}`}
-                    >
-                        Sau
-                    </button>
-                 </div>
-               </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Hiển thị{" "}
+                    <span className="font-medium">
+                      {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                    </span>{" "}
+                    đến{" "}
+                    <span className="font-medium">
+                      {Math.min(currentPage * ITEMS_PER_PAGE, totalProducts)}
+                    </span>{" "}
+                    trong <span className="font-medium">{totalProducts}</span>{" "}
+                    kết quả
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1 border rounded ${currentPage === 1 ? "bg-gray-200 text-gray-400" : "bg-white hover:bg-gray-100"}`}
+                  >
+                    Trước
+                  </button>
+                  {/* Hiển thị số trang đơn giản */}
+                  <span className="px-3 py-1 border bg-blue-50 text-blue-600 font-bold rounded">
+                    Trang {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    }
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1 border rounded ${currentPage === totalPages ? "bg-gray-200 text-gray-400" : "bg-white hover:bg-gray-100"}`}
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

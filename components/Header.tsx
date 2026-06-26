@@ -179,10 +179,10 @@ export default function Header() {
           ) : (
             <Link
               href="/login"
-              className="flex flex-col items-center text-xs cursor-pointer hover:opacity-80 text-gray-600"
+              className="flex items-center gap-2 bg-red-600 text-white px-4 py-3 rounded-full hover:bg-red-700 transition shadow-lg hover:shadow-xl"
             >
-              <span className="text-2xl text-blue-700">👤</span>
-              <span>Đăng nhập</span>
+              <span className="text-xl">👤</span>
+              <span className="font-bold hidden md:block">Đăng nhập</span>
             </Link>
           )}
 
@@ -615,14 +615,14 @@ export default function Header() {
                 {user ? (
                   <button
                     onClick={handleLogout}
-                    className="w-full bg-red-500 text-white py-2 rounded-lg mb-2"
+                    className="w-full bg-gray-500 text-white py-2 rounded-lg mb-2"
                   >
                     Đăng xuất
                   </button>
                 ) : (
                   <Link
                     href="/login"
-                    className="block w-full bg-blue-600 text-white py-2 rounded-lg mb-2 text-center"
+                    className="block w-full bg-red-600 text-white py-2 rounded-lg mb-2 text-center font-bold"
                     onClick={toggleMenu}
                   >
                     Đăng nhập

@@ -21,6 +21,52 @@ const CATEGORY_OPTIONS: any = {
   "Thiết bị y tế": TBYT_DATA,
 };
 
+// --- HÀM NÉN ẢNH ĐỂ TIẾT KIỆM DUNG LƯỢNG (DÙNG CANVAS) ---
+const compressImage = (file: File): Promise<File> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 1000; // Giới hạn chiều rộng ảnh là 1000px
+        const scaleSize = MAX_WIDTH / img.width;
+
+        if (img.width > MAX_WIDTH) {
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File(
+                [blob],
+                file.name.replace(/\.[^/.]+$/, "") + ".jpg",
+                {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                },
+              );
+              resolve(compressedFile);
+            }
+          },
+          "image/jpeg",
+          0.7, // Chất lượng 70% (tối ưu dung lượng/độ nét)
+        );
+      };
+    };
+  });
+};
+
 export default function AddProductPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false); // Trạng thái đang upload ảnh
@@ -34,25 +80,47 @@ export default function AddProductPage() {
     title: "",
     price: "",
     old_price: "",
-    img: "", 
+    img: "",
     category: "",
     sub_category: [] as string[],
     brand: "",
     origin: "",
     unit: "",
     description: "",
+    sku: "",
     // --- CÁC TRƯỜNG CHI TIẾT CŨ ---
-    registration_no: "", 
-    dosage_form: "", 
-    specification: "", 
-    manufacturer: "", 
-    ingredients: "", 
-    expiry: "", 
+    registration_no: "",
+    dosage_form: "",
+    specification: "",
+    manufacturer: "",
+    ingredients: "",
+    expiry: "",
     // --- [MỚI] THÊM CÁC TRƯỜNG CHUYÊN SÂU CHO THUỐC ---
     is_prescription: false, // Thuốc kê đơn (Rx)
-    indications: "",        // Chỉ định
-    contraindications: "",  // Chống chỉ định
+    indications: "", // Chỉ định
+    contraindications: "", // Chống chỉ định
   });
+
+  // --- MỚI: State và logic QUY ĐỔI ĐƠN VỊ ---
+  const [hasConversion, setHasConversion] = useState(false);
+  const [conversionUnits, setConversionUnits] = useState<any[]>([]);
+
+  const addConversionUnit = () => {
+    setConversionUnits([
+      ...conversionUnits,
+      { unit_name: "", quantity: "", price: "", old_price: "", sku: "" },
+    ]);
+  };
+
+  const removeConversionUnit = (index: number) => {
+    setConversionUnits(conversionUnits.filter((_, i) => i !== index));
+  };
+
+  const updateConversionUnit = (index: number, field: string, value: any) => {
+    const updated = [...conversionUnits];
+    updated[index][field] = value;
+    setConversionUnits(updated);
+  };
 
   // Xử lý khi chọn Danh mục cha -> Tự động load danh mục con
   const [subOptions, setSubOptions] = useState<any[]>([]);
@@ -98,7 +166,7 @@ export default function AddProductPage() {
       });
 
       const uniqueItems = Array.from(new Set(items.map((i) => i.title))).map(
-        (title) => items.find((i) => i.title === title)
+        (title) => items.find((i) => i.title === title),
       );
       setSubOptions(uniqueItems);
     } else {
@@ -131,25 +199,30 @@ export default function AddProductPage() {
     }
 
     try {
-      let finalImageString = ""; 
+      let finalImageString = "";
 
       if (selectedFiles.length > 0) {
         setUploading(true);
         const uploadedUrls: string[] = [];
 
         for (const file of selectedFiles) {
-          // ⚠️ CHỈNH SỬA Ở ĐÂY: Upload vào bucket 'products' thay vì Base64
+          // --- THÊM LOGIC NÉN ẢNH TRƯỚC KHI UPLOAD ---
+          const compressedFile = await compressImage(file);
+
           // Tạo tên file duy nhất để tránh trùng
-          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${compressedFile.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
 
           // Upload lên Storage
           const { error: uploadError } = await supabase.storage
-            .from("products") // Đã sửa thành 'products' (có 's') cho khớp với bucket bạn tạo
-            .upload(fileName, file);
+            .from("products")
+            .upload(fileName, compressedFile);
 
           if (uploadError) {
-             console.error("Lỗi upload:", uploadError);
-             throw new Error("Lỗi upload ảnh (Hãy chắc chắn bạn đã tạo bucket 'products' và đặt Public): " + uploadError.message);
+            console.error("Lỗi upload:", uploadError);
+            throw new Error(
+              "Lỗi upload ảnh (Hãy chắc chắn bạn đã tạo bucket 'products' và đặt Public): " +
+                uploadError.message,
+            );
           }
 
           // Lấy Public URL
@@ -184,6 +257,11 @@ export default function AddProductPage() {
         origin: formData.origin,
         unit: formData.unit,
         description: formData.description,
+        sku: formData.sku,
+        // --- QUY ĐỔI ĐƠN VỊ (MỚI) ---
+        conversion_units: hasConversion
+          ? JSON.stringify(conversionUnits.filter((u) => u.unit_name))
+          : null,
         // --- CÁC TRƯỜNG CŨ ---
         registration_no: formData.registration_no,
         dosage_form: formData.dosage_form,
@@ -192,9 +270,12 @@ export default function AddProductPage() {
         ingredients: formData.ingredients,
         expiry: formData.expiry,
         // --- [SỬA] CHỈ GỬI DỮ LIỆU THUỐC NẾU LÀ THUỐC ---
-        is_prescription: formData.category === "Thuốc" ? formData.is_prescription : false,
-        indications: formData.category === "Thuốc" ? formData.indications : null,
-        contraindications: formData.category === "Thuốc" ? formData.contraindications : null,
+        is_prescription:
+          formData.category === "Thuốc" ? formData.is_prescription : false,
+        indications:
+          formData.category === "Thuốc" ? formData.indications : null,
+        contraindications:
+          formData.category === "Thuốc" ? formData.contraindications : null,
       };
 
       const { error } = await supabase.from("products").insert([payload]);
@@ -214,6 +295,7 @@ export default function AddProductPage() {
         origin: "",
         unit: "",
         description: "",
+        sku: "",
         registration_no: "",
         dosage_form: "",
         specification: "",
@@ -224,6 +306,8 @@ export default function AddProductPage() {
         indications: "",
         contraindications: "",
       });
+      setHasConversion(false);
+      setConversionUnits([]);
       setSelectedFiles([]);
       setPreviewUrls([]);
     } catch (error: any) {
@@ -275,6 +359,22 @@ export default function AddProductPage() {
             />
           </div>
 
+          {/* Hàng: SKU */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">
+              Mã SKU (Mã sản phẩm)
+            </label>
+            <input
+              type="text"
+              className="w-full p-3 border rounded-lg focus:outline-blue-500"
+              placeholder="VD: SKU123456"
+              value={formData.sku}
+              onChange={(e) =>
+                setFormData({ ...formData, sku: e.target.value })
+              }
+            />
+          </div>
+
           {/* --- KHU VỰC UPLOAD NHIỀU ẢNH (MAX 6) --- */}
           <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-400">
             <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -284,7 +384,7 @@ export default function AddProductPage() {
             <input
               type="file"
               accept="image/*"
-              multiple 
+              multiple
               onChange={handleFileChange}
               className="block w-full text-sm text-gray-500
                 file:mr-4 file:py-2 file:px-4
@@ -443,6 +543,145 @@ export default function AddProductPage() {
             </div>
           </div>
 
+          {/* --- CHỨC NĂNG QUY ĐỔI ĐƠN VỊ (MỚI) --- */}
+          <div className="bg-white p-6 border rounded-xl shadow-sm space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  Thêm đơn vị quy đổi
+                  <span
+                    className="text-blue-500 cursor-help"
+                    title="Dùng khi sản phẩm có nhiều cách đóng gói: Viên, Vỉ, Hộp..."
+                  >
+                    ⓘ
+                  </span>
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Tạo và quy đổi các đơn vị tính khác nhau
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!hasConversion && conversionUnits.length === 0) {
+                    addConversionUnit();
+                  }
+                  setHasConversion(!hasConversion);
+                }}
+                className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none ${hasConversion ? "bg-blue-600" : "bg-gray-300"}`}
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${hasConversion ? "translate-x-6" : ""}`}
+                />
+              </button>
+            </div>
+
+            {hasConversion && (
+              <div className="space-y-4 mt-4">
+                <div className="hidden md:grid grid-cols-12 gap-4 text-xs font-bold text-gray-500 uppercase px-2">
+                  <div className="col-span-3">Đơn vị quy đổi</div>
+                  <div className="col-span-2">Số lượng (quy từ đ.vị gốc)</div>
+                  <div className="col-span-3">Giá bán</div>
+                  <div className="col-span-3">SKU đơn vị</div>
+                  <div className="col-span-1"></div>
+                </div>
+
+                {conversionUnits.map((item, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-gray-50 p-3 rounded-lg border border-gray-100 relative"
+                  >
+                    <div className="col-span-3">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        Đơn vị quy đổi
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="VD: Vỉ / Hộp"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.unit_name}
+                        onChange={(e) =>
+                          updateConversionUnit(
+                            index,
+                            "unit_name",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        Số lượng
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="12"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateConversionUnit(
+                            index,
+                            "quantity",
+                            e.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        Giá bán
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Giá cho đơn vị này"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.price}
+                        onChange={(e) =>
+                          updateConversionUnit(index, "price", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <label className="md:hidden text-xs font-bold text-gray-500 mb-1 block">
+                        SKU đơn vị
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="SKU-VI / SKU-HOP"
+                        className="w-full p-2 border rounded text-sm focus:outline-blue-500"
+                        value={item.sku}
+                        onChange={(e) =>
+                          updateConversionUnit(index, "sku", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="col-span-1 text-right">
+                      <button
+                        type="button"
+                        onClick={() => removeConversionUnit(index)}
+                        className="text-red-500 hover:text-red-700 font-bold p-1"
+                        title="Xóa đơn vị này"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addConversionUnit}
+                  className="flex items-center gap-2 text-blue-600 font-bold text-sm hover:underline mt-2 bg-blue-50 px-3 py-2 rounded-lg"
+                >
+                  <span className="flex items-center justify-center w-5 h-5 bg-blue-600 text-white rounded-full text-xs">
+                    +
+                  </span>
+                  Thêm đơn vị khác
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Hàng 5: Thương hiệu và Xuất xứ */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -585,40 +824,58 @@ export default function AddProductPage() {
           {/* --- KHU VỰC THÔNG TIN CHUYÊN SÂU (CHỈ HIỆN KHI LÀ "THUỐC") --- */}
           {formData.category === "Thuốc" && (
             <div className="bg-red-50 p-6 rounded-lg border border-red-200 mt-6 animate-fade-in">
-                <h3 className="text-lg font-bold text-red-800 mb-4 border-b border-red-200 pb-2 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-red-800 mb-4 border-b border-red-200 pb-2 flex items-center justify-between">
                 <span>🩺 Thông tin chỉ định (Dành riêng cho Thuốc)</span>
                 {/* Checkbox Thuốc kê đơn */}
                 <label className="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1 rounded shadow-sm border border-red-100">
-                    <input 
-                        type="checkbox" 
-                        className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
-                        checked={formData.is_prescription}
-                        onChange={(e) => setFormData({...formData, is_prescription: e.target.checked})}
-                    />
-                    <span className="text-sm font-bold text-red-600 uppercase">⚠️ Thuốc kê đơn (Rx)</span>
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 text-red-600 rounded focus:ring-red-500"
+                    checked={formData.is_prescription}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        is_prescription: e.target.checked,
+                      })
+                    }
+                  />
+                  <span className="text-sm font-bold text-red-600 uppercase">
+                    ⚠️ Thuốc kê đơn (Rx)
+                  </span>
                 </label>
-                </h3>
+              </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">Công dụng / Chỉ định</label>
-                        <textarea 
-                            className="w-full p-3 border rounded-lg h-24"
-                            placeholder="Thuốc dùng để điều trị bệnh gì?"
-                            value={formData.indications}
-                            onChange={(e) => setFormData({...formData, indications: e.target.value})}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">Chống chỉ định</label>
-                        <textarea 
-                            className="w-full p-3 border rounded-lg h-24"
-                            placeholder="Không dùng cho trường hợp nào?"
-                            value={formData.contraindications}
-                            onChange={(e) => setFormData({...formData, contraindications: e.target.value})}
-                        />
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Công dụng / Chỉ định
+                  </label>
+                  <textarea
+                    className="w-full p-3 border rounded-lg h-24"
+                    placeholder="Thuốc dùng để điều trị bệnh gì?"
+                    value={formData.indications}
+                    onChange={(e) =>
+                      setFormData({ ...formData, indications: e.target.value })
+                    }
+                  />
                 </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Chống chỉ định
+                  </label>
+                  <textarea
+                    className="w-full p-3 border rounded-lg h-24"
+                    placeholder="Không dùng cho trường hợp nào?"
+                    value={formData.contraindications}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        contraindications: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
             </div>
           )}
 

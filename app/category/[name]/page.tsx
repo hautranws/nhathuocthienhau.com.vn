@@ -115,15 +115,34 @@ export default async function CategoryPage(props: {
   }
 
   // --- LẤY DỮ LIỆU TỪ SUPABASE ---
-  const { data: allProducts, error } = await supabase
+  let supabaseQuery = supabase
     .from("products")
     .select(
-      "id, title, name, price, img, unit, discount, original_price, old_price, category, sub_category",
+      "id, title, price, img, unit, discount, old_price, category, sub_category, is_prescription",
     )
-    .ilike("category", `%${categoryName}%`);
+    .eq("category", categoryName); // Dùng .eq thay vì .ilike %...% để tránh timeout
+
+  // Nếu có childTitle (ưu tiên cao nhất)
+  if (childTitle) {
+    supabaseQuery = supabaseQuery.ilike("sub_category", `%${childTitle}%`);
+  }
+  // Nếu có subTitle
+  else if (subTitle) {
+    supabaseQuery = supabaseQuery.ilike("sub_category", `%${subTitle}%`);
+  }
+  // Nếu chỉ có group (ví dụ "Hỗ trợ tiêu hóa")
+  else if (subCategories.length > 0) {
+    // Tạo chuỗi OR filter cho các sub_category trong nhóm
+    const orFilter = subCategories
+      .map((item) => `sub_category.ilike.%${item.title}%`)
+      .join(",");
+    supabaseQuery = supabaseQuery.or(orFilter);
+  }
+
+  const { data: allProducts, error } = await supabaseQuery.limit(500);
 
   if (error) {
-    console.error("Lỗi Supabase:", error);
+    console.error("Lỗi Supabase:", error.message);
   }
 
   let finalProducts = allProducts || [];
