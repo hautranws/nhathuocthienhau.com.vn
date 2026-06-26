@@ -15,6 +15,7 @@ interface ProductProps {
     category?: string;
     is_prescription?: boolean;
     conversion_units?: any;
+    sku?: string;
   };
 }
 
