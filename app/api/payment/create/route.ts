@@ -58,9 +58,6 @@ export async function POST(req: Request) {
     } = body;
     const { name, phone, address, note } = customer;
 
-    } = body;
-    const { name, phone, address, note } = customer;
-
     // --- BƯỚC 0: TÍNH TOÁN LẠI GIÁ & MÃ GIẢM GIÁ (GIỮ NGUYÊN) ---
     const serverSubTotal = items.reduce(
       (sum: number, item: any) => sum + item.price * item.quantity,
