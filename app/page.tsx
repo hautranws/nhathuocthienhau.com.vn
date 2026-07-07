@@ -8,7 +8,7 @@ import FlashSale from "@/components/FlashSale";
 import CategoryGrid from "@/components/CategoryGrid";
 import ProductCard from "@/components/ProductCard";
 
-export const revalidate = 0; // Tắt cache hoàn toàn
+export const revalidate = 3; // ISR: Revalidate mỗi 3 giây khi có request
 
 async function getProducts() {
   // Dùng supabaseAdmin để bypass RLS

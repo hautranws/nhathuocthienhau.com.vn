@@ -1,19 +1,19 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useCachedData } from "@/lib/useCachedData";
 import Link from "next/link";
 
 interface Product {
   id: string | number;
   title: string;
-  name?: string;
   price: number;
   flash_sale_price: number;
   img: string;
   category: string;
   is_prescription: boolean;
-  flash_sale_start: string; // Thêm cột này trong DB
-  flash_sale_end: string; // Thêm cột này trong DB
+  flash_sale_start: string;
+  flash_sale_end: string;
 }
 
 export default function FlashSale() {
@@ -23,51 +23,53 @@ export default function FlashSale() {
     minutes: 0,
     seconds: 0,
   });
-  const [loading, setLoading] = useState(true);
   const [endTime, setEndTime] = useState<number | null>(null);
 
-  // --- 1. LẤY DỮ LIỆU TỪ SUPABASE & LỌC THEO GIỜ ---
+  // Sử dụng cache hook - 5 phút cache, giảm DB queries
+  const {
+    data: cachedProducts,
+    loading,
+    revalidate,
+  } = useCachedData(
+    async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select(
+          "id, title, price, flash_sale_price, img, category, is_prescription, flash_sale_start, flash_sale_end",
+        )
+        .eq("is_flash_sale", true)
+        .limit(20);
+
+      if (error) throw error;
+      return data || [];
+    },
+    "flash-sale-products",
+    5 * 60 * 1000, // 5 phút cache
+  );
+
+  // Filter và set products khi data ready
   useEffect(() => {
-    const fetchFlashSaleProducts = async () => {
-      try {
-        const now = new Date().toISOString();
+    if (!cachedProducts) return;
 
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .eq("is_flash_sale", true)
-          .limit(20);
+    const currentTime = new Date().getTime();
+    const activeProducts = (cachedProducts as Product[]).filter(
+      (p: Product) => {
+        if (!p.flash_sale_start || !p.flash_sale_end) return false;
+        const start = new Date(p.flash_sale_start).getTime();
+        const end = new Date(p.flash_sale_end).getTime();
+        return currentTime >= start && currentTime <= end;
+      },
+    );
 
-        if (!error && data) {
-          const currentTime = new Date().getTime();
+    setProducts(activeProducts.slice(0, 4));
 
-          const activeProducts = data.filter((p: Product) => {
-            if (!p.flash_sale_start || !p.flash_sale_end) return false;
-            const start = new Date(p.flash_sale_start).getTime();
-            const end = new Date(p.flash_sale_end).getTime();
-            return currentTime >= start && currentTime <= end;
-          });
-
-          setProducts(activeProducts.slice(0, 4));
-
-          if (activeProducts.length > 0) {
-            const firstProductEnd = new Date(
-              activeProducts[0].flash_sale_end,
-            ).getTime();
-            setEndTime(firstProductEnd);
-          }
-        } else if (error) {
-          console.warn("FlashSale fetch error:", error);
-        }
-      } catch (err) {
-        console.warn("FlashSale fetch exception:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFlashSaleProducts();
-  }, []);
+    if (activeProducts.length > 0) {
+      const firstProductEnd = new Date(
+        activeProducts[0].flash_sale_end,
+      ).getTime();
+      setEndTime(firstProductEnd);
+    }
+  }, [cachedProducts]);
 
   // --- 2. ĐỒNG HỒ ĐẾM NGƯỢC ---
   useEffect(() => {
@@ -181,13 +183,13 @@ export default function FlashSale() {
               <div className="w-full aspect-square flex items-center justify-center mb-3 overflow-hidden rounded-lg bg-white relative">
                 <img
                   src={displayImage}
-                  alt={item.title || item.name}
+                  alt={item.title}
                   className="w-full h-full object-contain group-hover:scale-110 transition duration-500"
                 />
               </div>
 
               <h3 className="text-xs md:text-sm font-semibold line-clamp-2 h-8 md:h-10 mb-2 group-hover:text-red-600 transition-colors">
-                {item.title || item.name}
+                {item.title}
               </h3>
 
               <div className="flex flex-col mb-3">

@@ -1,29 +1,12 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function Banner() {
-  // Ảnh mặc định (dùng khi chưa load được data hoặc DB trống)
-  const defaultSlides = [
-    {
-      id: 1,
-      image_url:
-        "https://cdn.nhathuoclongchau.com.vn/unsafe/828x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/Banner_Web_PC_1610x492_6_28c0397556.png",
-    },
-    {
-      id: 2,
-      image_url:
-        "https://cdn.nhathuoclongchau.com.vn/unsafe/828x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/Banner_Web_PC_1610x492_5_e890397556.png",
-    },
-    {
-      id: 3,
-      image_url:
-        "https://cdn.nhathuoclongchau.com.vn/unsafe/828x0/filters:quality(90)/https://cms-prod.s3-sgn09.fptcloud.com/Banner_Web_PC_1610x492_4_d890397556.png",
-    },
-  ];
-
-  const [slides, setSlides] = useState<any[]>(defaultSlides);
+  const [slides, setSlides] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   // --- 1. LẤY DỮ LIỆU TỪ SUPABASE ---
   useEffect(() => {
@@ -33,15 +16,20 @@ export default function Banner() {
           .from("banners_thienhau")
           .select("*")
           .eq("active", true)
-          .order("id", { ascending: false });
+          .order("id", { ascending: false })
+          .limit(5);
 
         if (!error && data && data.length > 0) {
           setSlides(data);
         } else if (error) {
           console.warn("Lỗi lấy danh sách banner:", error);
+          setSlides([]); // Fallback trống
         }
       } catch (err) {
         console.warn("Banner fetch error:", err);
+        setSlides([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -59,49 +47,57 @@ export default function Banner() {
     }, 4000); // 4 giây chuyển 1 lần
 
     return () => clearInterval(timer);
-  }, [slides.length]); // Chạy lại khi danh sách slide thay đổi
+  }, [slides.length]);
 
-  if (slides.length === 0) return null;
+  if (loading || slides.length === 0) return null;
+
+  const currentSlide = slides[currentIndex];
 
   return (
     <div className="w-full aspect-[1610/492] relative overflow-hidden rounded-xl shadow-lg group">
-      {/* Hiển thị ảnh */}
-      <div
-        // Sử dụng aspect-ratio tỷ lệ chuẩn của ảnh, nên dùng bg-cover sẽ khít hoàn toàn
-        className="w-full h-full bg-center bg-cover bg-no-repeat duration-700 transition-all ease-in-out"
-        style={{ backgroundImage: `url(${slides[currentIndex].image_url})` }}
-      ></div>
+      {/* Hiển thị ảnh với Next.js Image (Optimized) */}
+      <Image
+        src={currentSlide.image_url}
+        alt={`Banner ${currentIndex + 1}`}
+        fill
+        priority={currentIndex === 0} // First slide priority
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+        className="object-cover duration-700 transition-opacity ease-in-out"
+        quality={85}
+      />
 
       {/* Nút lùi (Mũi tên trái) */}
-      <div className="hidden group-hover:block absolute top-[50%] -translate-y-1/2 left-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer hover:bg-black/50 transition">
+      <div className="hidden group-hover:block absolute top-[50%] -translate-y-1/2 left-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer hover:bg-black/50 transition z-10">
         <button
           onClick={() =>
             setCurrentIndex(
               currentIndex === 0 ? slides.length - 1 : currentIndex - 1,
             )
           }
+          aria-label="Previous slide"
         >
           ❮
         </button>
       </div>
 
       {/* Nút tiến (Mũi tên phải) */}
-      <div className="hidden group-hover:block absolute top-[50%] -translate-y-1/2 right-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer hover:bg-black/50 transition">
+      <div className="hidden group-hover:block absolute top-[50%] -translate-y-1/2 right-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer hover:bg-black/50 transition z-10">
         <button
           onClick={() =>
             setCurrentIndex(
               currentIndex === slides.length - 1 ? 0 : currentIndex + 1,
             )
           }
+          aria-label="Next slide"
         >
           ❯
         </button>
       </div>
 
       {/* Chấm tròn nhỏ bên dưới */}
-      <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+      <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
         {slides.map((slide, index) => (
-          <div
+          <button
             key={slide.id || index}
             onClick={() => setCurrentIndex(index)}
             className={`transition-all w-2 h-2 md:w-3 md:h-3 rounded-full cursor-pointer shadow-sm ${
@@ -109,7 +105,9 @@ export default function Banner() {
                 ? "bg-white scale-125"
                 : "bg-white/50 hover:bg-white/80"
             }`}
-          ></div>
+            aria-label={`Go to slide ${index + 1}`}
+            aria-current={currentIndex === index}
+          />
         ))}
       </div>
     </div>

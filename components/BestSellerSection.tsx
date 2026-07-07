@@ -1,31 +1,36 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-// --- [ĐÃ SỬA] Gọi đích danh component chuẩn từ thư mục components ---
+import { useCachedData } from "@/lib/useCachedData";
 import ProductCard from "@/components/ProductCard";
 import Link from "next/link";
 
 export default function BestSellerSection() {
   const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchBestSellers = async () => {
-      // Lấy các sản phẩm có is_best_seller = true
+  // Cache best sellers cho 10 phút - không thay đổi thường xuyên
+  const { data: cachedProducts, loading } = useCachedData(
+    async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select(
+          "id, title, price, old_price, img, category, is_prescription, unit, specification, conversion_units, sku",
+        )
         .eq("is_best_seller", true)
-        .limit(10); // Lấy tối đa 10 sản phẩm
+        .limit(10);
 
-      if (!error && data) {
-        setProducts(data);
-      }
-      setLoading(false);
-    };
+      if (error) throw error;
+      return data || [];
+    },
+    "best-sellers",
+    10 * 60 * 1000, // 10 phút cache
+  );
 
-    fetchBestSellers();
-  }, []);
+  useEffect(() => {
+    if (cachedProducts) {
+      setProducts(cachedProducts);
+    }
+  }, [cachedProducts]);
 
   if (loading)
     return (
