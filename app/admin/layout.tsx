@@ -10,12 +10,47 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [authorized, setAuthorized] = useState(true);
-  const [isChecking, setIsChecking] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Admin check logic removed for local testing
-  }, []);
+    const checkAdmin = async () => {
+      try {
+        // 1. Check if user is logged in
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          router.push("/login?redirect=/admin");
+          return;
+        }
+
+        // 2. Check if user is admin in database
+        const { data: adminData, error } = await supabase
+          .from("admin_users")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .single();
+
+        if (error || !adminData) {
+          // User is not admin - redirect to home
+          router.push("/");
+          return;
+        }
+
+        // User is admin - allow access
+        setAuthorized(true);
+        setIsChecking(false);
+      } catch (err) {
+        console.error("Admin check error:", err);
+        router.push("/");
+      }
+    };
+
+    checkAdmin();
+  }, [router]);
 
   if (isChecking) {
     return (
