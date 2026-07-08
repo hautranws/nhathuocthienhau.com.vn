@@ -9,7 +9,6 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // Create Supabase client for middleware
     let response = NextResponse.next();
 
     const supabase = createServerClient(
@@ -29,35 +28,21 @@ export async function middleware(request: NextRequest) {
       },
     );
 
-    // Get user session
+    // Chỉ kiểm tra đăng nhập - AdminLayout sẽ kiểm tra quyền admin
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Nếu không có user, redirect tới login
     if (!user) {
       return NextResponse.redirect(
         new URL("/login?redirect=/admin", request.url),
       );
     }
 
-    // Check if user is admin (kiểm tra từ user metadata hoặc database)
-    const { data: adminData } = await supabase
-      .from("admin_users")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .single();
-
-    if (!adminData) {
-      // User không phải admin - redirect
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-
     return response;
   } catch (error) {
     console.error("Middleware error:", error);
-    // Nếu có lỗi, cho phép request (safe fallback)
+    // Nếu có lỗi, cho phép request (AdminLayout sẽ kiểm tra lại)
     return NextResponse.next();
   }
 }

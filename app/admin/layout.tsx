@@ -34,7 +34,11 @@ export default function AdminLayout({
           .eq("is_active", true)
           .single();
 
-        if (error || !adminData) {
+        if (error) {
+          console.error("Admin check DB error:", error.message, error.code);
+        }
+
+        if (!adminData) {
           // User is not admin - redirect to home
           router.push("/");
           return;
