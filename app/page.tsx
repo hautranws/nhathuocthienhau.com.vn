@@ -8,7 +8,7 @@ import FlashSale from "@/components/FlashSale";
 import CategoryGrid from "@/components/CategoryGrid";
 import ProductCard from "@/components/ProductCard";
 
-export const revalidate = 3; // ISR: Revalidate mỗi 3 giây khi có request
+export const dynamic = 'force-dynamic'; // Render on-demand, không pre-render lúc build
 
 async function getProducts() {
   // Dùng supabaseAdmin để bypass RLS
