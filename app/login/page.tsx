@@ -75,7 +75,15 @@ export default function LoginPage() {
       if (error) throw error;
 
       if (data.user) {
-        router.push(isAdminUser(data.user) ? "/admin" : "/");
+        // Check if user is admin in database
+        const { data: adminData } = await supabase
+          .from("admin_users")
+          .select("id")
+          .eq("user_id", data.user.id)
+          .eq("is_active", true)
+          .single();
+
+        router.push(adminData ? "/admin" : "/");
       }
     } catch (error: any) {
       setMessage(`❌ Mã OTP không đúng hoặc hết hạn.`);
@@ -102,7 +110,15 @@ export default function LoginPage() {
       if (error) throw error;
 
       if (data.user) {
-        router.push(isAdminUser(data.user) ? "/admin" : "/");
+        // Check if user is admin in database
+        const { data: adminData } = await supabase
+          .from("admin_users")
+          .select("id")
+          .eq("user_id", data.user.id)
+          .eq("is_active", true)
+          .single();
+
+        router.push(adminData ? "/admin" : "/");
       }
     } catch (error: any) {
       setMessage(`❌ Đăng nhập thất bại: Sai email hoặc mật khẩu.`);

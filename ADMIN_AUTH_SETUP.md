@@ -1,6 +1,7 @@
 # 🔐 ADMIN AUTHENTICATION - HƯỚNG DẪN SETUP
 
 ## 📋 Vấn Đề Ban Đầu
+
 ❌ **Trang /admin trước**: Bất kỳ ai cũng truy cập được  
 ✅ **Sau cập nhật**: Chỉ admin có thể vào
 
@@ -9,16 +10,19 @@
 ## 🚀 CẬP NHẬT LẦN NÀY
 
 ### 1. **Middleware Bảo Vệ** (middleware.ts)
+
 - Kiểm tra user login trước khi vào /admin
 - Kiểm tra user có trong bảng admin_users không
 - Redirect nếu không phải admin
 
 ### 2. **Admin Layout Auth** (app/admin/layout.tsx)
+
 - Client-side double-check
 - Loading state + check quyền hạn
 - Đăng xuất button
 
 ### 3. **Database Schema** (SQL_ADMIN_SETUP.sql)
+
 - Bảng `admin_users` lưu danh sách admin
 - RLS Policy bảo mật
 
@@ -58,6 +62,7 @@ VALUES (
 ```
 
 Thay:
+
 - `PASTE_UUID_VÀO_ĐÂY` → UUID từ Auth Users
 - `email@example.com` → email của admin
 - `Tên Người Dùng` → tên hiển thị
@@ -83,21 +88,25 @@ Thay:
 ## 📊 Lệnh SQL Hữu Ích
 
 ### **Xem danh sách admin**
+
 ```sql
 SELECT email, full_name, role, is_active FROM admin_users;
 ```
 
 ### **Tắt quyền admin (vẫn giữ record)**
+
 ```sql
 UPDATE admin_users SET is_active = false WHERE email = 'admin@example.com';
 ```
 
 ### **Bật lại quyền admin**
+
 ```sql
 UPDATE admin_users SET is_active = true WHERE email = 'admin@example.com';
 ```
 
 ### **Xóa admin hoàn toàn**
+
 ```sql
 DELETE FROM admin_users WHERE email = 'admin@example.com';
 ```
@@ -120,14 +129,17 @@ DELETE FROM admin_users WHERE email = 'admin@example.com';
 ## ⚠️ Troubleshooting
 
 ### **"Đang kiểm tra quyền Admin..." mãi không hết**
+
 → Middleware có lỗi  
 → Kiểm tra `.env.local` có `NEXT_PUBLIC_SUPABASE_URL` không
 
 ### **Redirect tới home mặc dù login rồi**
+
 → User không có record trong `admin_users`  
 → Thêm qua SQL (Bước 2)
 
 ### **Lỗi "Table does not exist"**
+
 → Chưa chạy SQL script  
 → Vào Supabase SQL Editor chạy file `SQL_ADMIN_SETUP.sql`
 
@@ -136,11 +148,13 @@ DELETE FROM admin_users WHERE email = 'admin@example.com';
 ## 🔒 Security Best Practices
 
 ✅ **Làm tốt:**
+
 - RLS Policy chỉ cho service_role quản lý
 - Middleware check trước rendering
 - Double-check ở client & server
 
 ⚠️ **Cần làm thêm:**
+
 - Rate limit login attempts (chống brute force)
 - Activity logging (ghi lại ai access)
 - 2FA (Two-factor authentication) - tuỳ chọn

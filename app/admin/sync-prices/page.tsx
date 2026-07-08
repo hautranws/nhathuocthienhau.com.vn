@@ -3,6 +3,7 @@ import React, { useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import * as XLSX from "xlsx";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // --- TYPES ---
 interface ProductDB {
@@ -22,13 +23,21 @@ interface PreviewRow {
   productTitle?: string;
 }
 
+interface MissingProduct extends ProductDB {
+  matchedSkuCount?: number;
+}
+
 export default function SyncPricesPage() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [exportLoading, setExportLoading] = useState(false);
+  const [missingProducts, setMissingProducts] = useState<MissingProduct[]>([]);
+  const [showMissingProducts, setShowMissingProducts] = useState(false);
+  const [findingMissing, setFindingMissing] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   // --- 1. HÀM XUẤT DỮ LIỆU HIỆN TẠI (EXPORT EXCEL) ---
   const handleExportData = async () => {
@@ -155,7 +164,8 @@ export default function SyncPricesPage() {
           .in("sku", chunk);
 
         if (error) throw error;
-        if (chunkData) dbProducts = [...dbProducts, ...(chunkData as ProductDB[])];
+        if (chunkData)
+          dbProducts = [...dbProducts, ...(chunkData as ProductDB[])];
       }
 
       // Bước 3: Tạo mảng Preview ghép giữa Excel và DB
@@ -250,6 +260,55 @@ export default function SyncPricesPage() {
       alert("Lỗi nghiêm trọng khi đồng bộ: " + error.message);
     } finally {
       setSyncing(false);
+    }
+  };
+
+  // --- 4. HÀM TÌM NHỮNG SẢN PHẨM KHÔNG CÓ TRONG FILE EXCEL ---
+  const handleFindMissingProducts = async () => {
+    if (previewData.length === 0) {
+      alert("Vui lòng nhập file Excel trước!");
+      return;
+    }
+
+    setFindingMissing(true);
+    try {
+      // Bước 1: Lấy tất cả SKU có trong file
+      const skuInFile = new Set(previewData.map((r) => r.sku));
+
+      // Bước 2: Lấy tất cả sản phẩm từ database
+      let allProducts: ProductDB[] = [];
+      let hasMore = true;
+      let page = 0;
+      const limit = 1000;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("id, sku, title, price, category")
+          .range(page * limit, (page + 1) * limit - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allProducts = [...allProducts, ...(data as ProductDB[])];
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      // Bước 3: Lọc những sản phẩm không có SKU trong file
+      const missing = allProducts.filter((p) => !skuInFile.has(p.sku));
+
+      setMissingProducts(missing);
+      setShowMissingProducts(true);
+
+      alert(`Tìm thấy ${missing.length} sản phẩm không có trong file Excel!`);
+    } catch (error: any) {
+      console.error("Lỗi tìm sản phẩm thiếu:", error);
+      alert("Lỗi: " + error.message);
+    } finally {
+      setFindingMissing(false);
     }
   };
 
@@ -416,6 +475,24 @@ export default function SyncPricesPage() {
                 Hủy bỏ
               </button>
               <button
+                onClick={handleFindMissingProducts}
+                disabled={findingMissing || syncing}
+                className={`px-6 py-3 rounded-xl font-bold shadow-lg transition flex items-center gap-2 ${
+                  findingMissing || syncing
+                    ? "bg-yellow-300 cursor-not-allowed text-gray-700"
+                    : "bg-yellow-500 hover:bg-yellow-600 text-white"
+                }`}
+              >
+                {findingMissing ? (
+                  <>
+                    <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                    Đang tìm...
+                  </>
+                ) : (
+                  "🔍 Tìm SP chưa cập nhật giá"
+                )}
+              </button>
+              <button
                 onClick={handleSyncPrices}
                 disabled={syncing || readyCount === 0}
                 className={`px-8 py-3 rounded-xl font-bold shadow-lg transition flex items-center gap-2 ${
@@ -434,6 +511,87 @@ export default function SyncPricesPage() {
                 )}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* SECTION HIỂN THỊ SẢN PHẨM KHÔNG CÓ TRONG FILE */}
+        {showMissingProducts && missingProducts.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-yellow-300 animate-fadeIn">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-bold text-lg text-yellow-700">
+                ⚠️ Danh sách sản phẩm chưa được cập nhật giá (
+                {missingProducts.length})
+              </h2>
+              <button
+                onClick={() => setShowMissingProducts(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="overflow-x-auto max-h-[500px] border border-yellow-200 rounded-lg shadow-inner">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead className="bg-yellow-100 text-yellow-800 uppercase font-bold sticky top-0 z-10">
+                  <tr>
+                    <th className="p-3 border-b">STT</th>
+                    <th className="p-3 border-b">Mã SKU</th>
+                    <th className="p-3 border-b min-w-[250px]">Tên sản phẩm</th>
+                    <th className="p-3 border-b">Danh mục</th>
+                    <th className="p-3 border-b text-right">Giá hiện tại</th>
+                    <th className="p-3 border-b text-center">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-yellow-100">
+                  {missingProducts.map((product, index) => (
+                    <tr key={product.id} className="hover:bg-yellow-50">
+                      <td className="p-3 text-gray-500 font-mono">
+                        {index + 1}
+                      </td>
+                      <td className="p-3 font-bold text-yellow-700">
+                        {product.sku}
+                      </td>
+                      <td className="p-3">
+                        <div className="font-semibold text-gray-800 line-clamp-2">
+                          {product.title}
+                        </div>
+                      </td>
+                      <td className="p-3 text-gray-600">{product.category}</td>
+                      <td className="p-3 text-right font-bold text-gray-800">
+                        {product.price?.toLocaleString("vi-VN")} đ
+                      </td>
+                      <td className="p-3 text-center">
+                        <button
+                          onClick={() => router.push(`/admin/products/edit/${product.id}`)}
+                          className="px-4 py-2 bg-blue-500 text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition"
+                        >
+                          ✏️ Sửa
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 flex justify-between items-center">
+              <p className="text-sm text-yellow-700">
+                💡 <strong>Ghi chú:</strong> Những sản phẩm này có trong
+                database nhưng không xuất hiện trong file Excel được cập nhật.
+                Bạn có thể xuất file này để bổ sung giá hoặc kiểm tra lại dữ
+                liệu.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* TRƯỜNG HỢP TÌM KHÔNG CÓ SẢN PHẨM THIẾU */}
+        {showMissingProducts && missingProducts.length === 0 && (
+          <div className="bg-green-50 p-6 rounded-xl shadow-sm border border-green-300 animate-fadeIn">
+            <p className="text-green-700 text-center font-semibold">
+              ✅ Tuyệt vời! Tất cả sản phẩm đều có trong file Excel cần cập nhật
+              giá.
+            </p>
           </div>
         )}
       </div>

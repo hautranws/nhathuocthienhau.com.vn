@@ -22,11 +22,11 @@ export async function middleware(request: NextRequest) {
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
+              response.cookies.set(name, value, options),
             );
           },
         },
-      }
+      },
     );
 
     // Get user session
@@ -36,7 +36,9 @@ export async function middleware(request: NextRequest) {
 
     // Nếu không có user, redirect tới login
     if (!user) {
-      return NextResponse.redirect(new URL("/login?redirect=/admin", request.url));
+      return NextResponse.redirect(
+        new URL("/login?redirect=/admin", request.url),
+      );
     }
 
     // Check if user is admin (kiểm tra từ user metadata hoặc database)

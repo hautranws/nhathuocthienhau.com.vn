@@ -166,7 +166,8 @@ export default function SyncPricesPage() {
           .in("sku", chunk);
 
         if (error) throw error;
-        if (chunkData) dbProducts = [...dbProducts, ...(chunkData as ProductDB[])];
+        if (chunkData)
+          dbProducts = [...dbProducts, ...(chunkData as ProductDB[])];
       }
 
       // Bước 3: Tạo mảng Preview ghép giữa Excel và DB
