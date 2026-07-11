@@ -66,14 +66,20 @@ export default function EditProductPage() {
   // State thông tin sản phẩm
   const [product, setProduct] = useState({
     title: "",
-    price: 0,
-    old_price: 0,
+    price: "",
+    old_price: "",
     category_id: "",
     description: "",
     sku: "",
     unit: "Viên",
     conversion_units: null as any,
   });
+
+  // --- FORMAT GIÁ: tự thêm dấu chấm mỗi 3 số ---
+  const formatPrice = (val: string) => {
+    const digits = val.replace(/\D/g, '');
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
 
   const [hasConversion, setHasConversion] = useState(false);
   const [conversionUnits, setConversionUnits] = useState<any[]>([]);
@@ -119,8 +125,8 @@ export default function EditProductPage() {
 
         setProduct({
           title: data.title || "",
-          price: data.price || 0,
-          old_price: data.old_price || 0,
+          price: formatPrice(String(data.price || 0)),
+          old_price: formatPrice(String(data.old_price || 0)),
           category_id: data.category_id || "",
           description: data.description || "",
           sku: data.sku || "",
@@ -232,8 +238,8 @@ export default function EditProductPage() {
         .from("products")
         .update({
           title: product.title,
-          price: Number(product.price),
-          old_price: Number(product.old_price),
+          price: Number(String(product.price).replace(/\./g, '')),
+          old_price: Number(String(product.old_price).replace(/\./g, '')),
           img: JSON.stringify(finalImages), // Lưu dưới dạng mảng JSON string
           category_id: product.category_id,
           description: product.description,
@@ -397,11 +403,11 @@ export default function EditProductPage() {
                 Giá bán (VNĐ)
               </label>
               <input
-                type="number"
+                type="text"
                 className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none font-bold"
                 value={product.price}
                 onChange={(e) =>
-                  setProduct({ ...product, price: Number(e.target.value) })
+                  setProduct({ ...product, price: formatPrice(e.target.value) })
                 }
                 required
               />
@@ -411,11 +417,11 @@ export default function EditProductPage() {
                 Giá cũ (nếu có)
               </label>
               <input
-                type="number"
+                type="text"
                 className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                 value={product.old_price}
                 onChange={(e) =>
-                  setProduct({ ...product, old_price: Number(e.target.value) })
+                  setProduct({ ...product, old_price: formatPrice(e.target.value) })
                 }
               />
             </div>

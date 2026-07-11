@@ -53,13 +53,35 @@ export default function SearchBar() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchTerm.length > 1) {
-        const { data } = await supabase
-          .from("products")
-          .select("id, title, price, img, old_price, category, is_prescription")
-          .ilike("title", `%${searchTerm}%`)
-          .limit(5);
+        const words = searchTerm.trim().split(/\s+/).filter((w) => w.length > 0);
 
-        if (data) setSuggestions(data);
+        // Bước 1: AND - tất cả từ đều phải có trong tên
+        let queryBuilder = supabase
+          .from("products")
+          .select("id, title, price, img, old_price, category, is_prescription");
+
+        for (const word of words) {
+          queryBuilder = queryBuilder.ilike("title", `%${word}%`);
+        }
+
+        const { data: andData } = await queryBuilder.limit(5);
+
+        if (andData && andData.length > 0) {
+          setSuggestions(andData);
+        } else if (words.length > 1) {
+          // Bước 2 (fallback): OR - bất kỳ từ nào khớp (ưu tiên từ dài hơn)
+          const orFilter = words
+            .map((w) => `title.ilike.%${w}%`)
+            .join(",");
+          const { data: orData } = await supabase
+            .from("products")
+            .select("id, title, price, img, old_price, category, is_prescription")
+            .or(orFilter)
+            .limit(5);
+          setSuggestions(orData || []);
+        } else {
+          setSuggestions([]);
+        }
       } else {
         setSuggestions([]);
       }

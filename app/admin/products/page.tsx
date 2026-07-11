@@ -10,25 +10,33 @@ export default function ProductManagementPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState("");
 
-  // --- [CODE MỚI] State cho phân trang ---
+  // --- State cho phân trang ---
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
 
-  // Gọi hàm fetch mỗi khi đổi trang
+  // Gọi hàm fetch mỗi khi đổi trang hoặc từ khóa tìm kiếm
   useEffect(() => {
     fetchProducts();
-  }, [currentPage]);
+  }, [currentPage, searchTerm]);
 
   const fetchProducts = async () => {
     setLoading(true);
     setDebugInfo("Đang kết nối...");
 
     try {
-      // 1. Lấy tổng số lượng để tính số trang
-      const { count } = await supabase
+      // 1. Lấy tổng số lượng để tính số trang (lọc theo search nếu có)
+      let countQuery = supabase
         .from("products")
         .select("*", { count: "exact", head: true });
+
+      if (searchTerm.trim()) {
+        countQuery = countQuery.ilike("title", `%${searchTerm.trim()}%`);
+      }
+
+      const { count } = await countQuery;
 
       setTotalProducts(count || 0);
 
@@ -36,12 +44,18 @@ export default function ProductManagementPage() {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      // 3. Lấy dữ liệu theo trang
-      const { data, error } = await supabase
+      // 3. Lấy dữ liệu theo trang (có tìm kiếm nếu có từ khóa)
+      let query = supabase
         .from("products")
         .select("*")
         .order("id", { ascending: false })
-        .range(from, to); // [QUAN TRỌNG] Chỉ lấy 100 dòng
+        .range(from, to);
+
+      if (searchTerm.trim()) {
+        query = query.ilike("title", `%${searchTerm.trim()}%`);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         setDebugInfo(`❌ Lỗi: ${error.message}`);
@@ -110,8 +124,39 @@ export default function ProductManagementPage() {
         </div>
 
         {/* Debug Info */}
-        <div className="bg-black text-green-400 p-4 rounded mb-6 font-mono text-sm">
+        <div className="bg-black text-green-400 p-4 rounded mb-4 font-mono text-sm">
           Status: {debugInfo} | Tổng cộng: {totalProducts} sản phẩm
+        </div>
+
+        {/* Thanh tìm kiếm */}
+        <div className="bg-white p-3 rounded-xl shadow mb-6 flex gap-2">
+          <input
+            type="text"
+            placeholder="🔍 Tìm theo tên sản phẩm (toàn bộ kho)..."
+            className="flex-1 p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setCurrentPage(1);
+                setSearchTerm(searchInput);
+              }
+            }}
+          />
+          <button
+            onClick={() => { setCurrentPage(1); setSearchTerm(searchInput); }}
+            className="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 transition text-sm"
+          >
+            Tìm
+          </button>
+          {searchTerm && (
+            <button
+              onClick={() => { setSearchInput(''); setSearchTerm(''); setCurrentPage(1); }}
+              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-300 transition text-sm"
+            >
+              ✕ Xóa
+            </button>
+          )}
         </div>
 
         <div className="bg-white rounded-xl shadow overflow-hidden">

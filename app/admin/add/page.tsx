@@ -125,6 +125,12 @@ export default function AddProductPage() {
   // Xử lý khi chọn Danh mục cha -> Tự động load danh mục con
   const [subOptions, setSubOptions] = useState<any[]>([]);
 
+  // --- FORMAT GIÁ: tự thêm dấu chấm mỗi 3 số ---
+  const formatPrice = (val: string) => {
+    const digits = val.replace(/\D/g, '');
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
   // --- HÀM XỬ LÝ CHỌN FILE TỪ MÁY TÍNH ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -248,8 +254,9 @@ export default function AddProductPage() {
 
       const payload = {
         title: formData.title,
-        price: formData.price,
-        old_price: formData.old_price,
+        price: formData.price.replace(/\./g, ''),
+        old_price: formData.old_price.replace(/\./g, ''),
+
         img: finalImageString, // Giờ đây là chuỗi JSON chứa các đường link ngắn gọn
         category: formData.category,
         sub_category: subCategoryString,
@@ -505,10 +512,10 @@ export default function AddProductPage() {
               <input
                 type="text"
                 className="w-full p-3 border rounded-lg"
-                placeholder="350000"
+                placeholder="350.000"
                 value={formData.price}
                 onChange={(e) =>
-                  setFormData({ ...formData, price: e.target.value })
+                  setFormData({ ...formData, price: formatPrice(e.target.value) })
                 }
                 required
               />
@@ -520,10 +527,10 @@ export default function AddProductPage() {
               <input
                 type="text"
                 className="w-full p-3 border rounded-lg"
-                placeholder="450000"
+                placeholder="450.000"
                 value={formData.old_price}
                 onChange={(e) =>
-                  setFormData({ ...formData, old_price: e.target.value })
+                  setFormData({ ...formData, old_price: formatPrice(e.target.value) })
                 }
               />
             </div>

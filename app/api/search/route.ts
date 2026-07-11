@@ -12,9 +12,18 @@ export async function GET(request: NextRequest) {
 
     let supabaseQuery = supabase.from("products").select("*");
 
-    // Tìm kiếm theo tên
+    // Tìm kiếm theo tên - logic đa từ: tách từng từ và yêu cầu tất cả đều có trong tên (AND)
     if (query) {
-      supabaseQuery = supabaseQuery.ilike("title", `%${query}%`);
+      const words = query.trim().split(/\s+/).filter((w) => w.length > 0);
+      if (words.length <= 1) {
+        // Tìm kiếm 1 từ: giữ nguyên
+        supabaseQuery = supabaseQuery.ilike("title", `%${query}%`);
+      } else {
+        // Nhiều từ: AND - mỗi từ phải xuất hiện trong tên
+        for (const word of words) {
+          supabaseQuery = supabaseQuery.ilike("title", `%${word}%`);
+        }
+      }
     }
 
     // Lọc theo danh mục

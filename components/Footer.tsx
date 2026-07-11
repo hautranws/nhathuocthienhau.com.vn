@@ -206,7 +206,7 @@ export default function Footer() {
                 className="block w-36"
               >
                 <img
-                  src="http://online.gov.vn/Content/EndUser/LogoCCDVSaleNoti/logoSaleNoti.png"
+                  src="/bct-logo.png"
                   alt="Đã thông báo Bộ Công Thương"
                   className="w-full h-auto object-contain cursor-pointer hover:opacity-90 transition"
                 />

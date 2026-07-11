@@ -172,6 +172,22 @@ export default function AdminDashboard() {
               Cập nhật SKU hàng loạt
             </p>
           </Link>
+
+          {/* 10. Sản phẩm bán chạy */}
+          <Link
+            href="/admin/best-sellers"
+            className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-md border-2 border-transparent hover:border-orange-500 hover:shadow-xl transition cursor-pointer group"
+          >
+            <div className="text-5xl mb-3 group-hover:scale-110 transition">
+              🔥
+            </div>
+            <h3 className="text-xl font-bold text-orange-600 text-center">
+              Bán chạy
+            </h3>
+            <p className="text-gray-500 text-xs mt-1 text-center">
+              Quản lý sản phẩm nổi bật
+            </p>
+          </Link>
         </div>
 
         {/* Quản lý sản phẩm trang chủ */}
