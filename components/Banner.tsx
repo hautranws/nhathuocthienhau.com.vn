@@ -7,6 +7,14 @@ export default function Banner() {
   const [slides, setSlides] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const updateViewport = () => setIsMobile(window.innerWidth < 768);
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
 
   // --- 1. LẤY DỮ LIỆU TỪ SUPABASE ---
   useEffect(() => {
@@ -17,7 +25,7 @@ export default function Banner() {
           .select("*")
           .eq("active", true)
           .order("id", { ascending: false })
-          .limit(5);
+          .limit(20);
 
         if (!error && data && data.length > 0) {
           setSlides(data);
@@ -36,25 +44,47 @@ export default function Banner() {
     fetchBanners();
   }, []);
 
+  const desktopSlides = slides.filter((slide) => {
+    const placement = slide.placement || "desktop";
+    return placement === "desktop";
+  });
+
+  const mobileSlides = slides.filter((slide) => slide.placement === "mobile");
+
+  const effectiveSlides = isMobile
+    ? mobileSlides.length > 0
+      ? mobileSlides
+      : desktopSlides
+    : desktopSlides.length > 0
+      ? desktopSlides
+      : mobileSlides;
+
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [isMobile, effectiveSlides.length]);
+
   // --- 2. TỰ ĐỘNG CHUYỂN SLIDE ---
   useEffect(() => {
-    if (slides.length === 0) return;
+    if (effectiveSlides.length === 0) return;
 
     const timer = setInterval(() => {
       setCurrentIndex((prevIndex) =>
-        prevIndex === slides.length - 1 ? 0 : prevIndex + 1,
+        prevIndex === effectiveSlides.length - 1 ? 0 : prevIndex + 1,
       );
     }, 4000); // 4 giây chuyển 1 lần
 
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [effectiveSlides.length]);
 
-  if (loading || slides.length === 0) return null;
+  if (loading || effectiveSlides.length === 0) return null;
 
-  const currentSlide = slides[currentIndex];
+  const currentSlide = effectiveSlides[currentIndex];
 
   return (
-    <div className="w-full aspect-[1610/492] relative overflow-hidden rounded-xl shadow-lg group">
+    <div
+      className="w-full relative overflow-hidden rounded-2xl shadow-lg group"
+      style={{ aspectRatio: isMobile ? "16 / 9" : "1610 / 492" }}
+    >
       {/* Hiển thị ảnh với Next.js Image (Optimized) */}
       <Image
         src={currentSlide.image_url}
@@ -71,7 +101,7 @@ export default function Banner() {
         <button
           onClick={() =>
             setCurrentIndex(
-              currentIndex === 0 ? slides.length - 1 : currentIndex - 1,
+              currentIndex === 0 ? effectiveSlides.length - 1 : currentIndex - 1,
             )
           }
           aria-label="Previous slide"
@@ -85,7 +115,7 @@ export default function Banner() {
         <button
           onClick={() =>
             setCurrentIndex(
-              currentIndex === slides.length - 1 ? 0 : currentIndex + 1,
+              currentIndex === effectiveSlides.length - 1 ? 0 : currentIndex + 1,
             )
           }
           aria-label="Next slide"
@@ -95,8 +125,8 @@ export default function Banner() {
       </div>
 
       {/* Chấm tròn nhỏ bên dưới */}
-      <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
-        {slides.map((slide, index) => (
+      <div className="absolute bottom-3 md:bottom-4 left-0 right-0 flex justify-center gap-2 z-10">
+        {effectiveSlides.map((slide, index) => (
           <button
             key={slide.id || index}
             onClick={() => setCurrentIndex(index)}

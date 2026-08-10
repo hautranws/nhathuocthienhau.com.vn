@@ -48,6 +48,19 @@ export default function OrdersPage() {
     }
   };
 
+  const parseOrderMeta = (orderNote: string = "") => {
+    const parts = orderNote
+      .split("|")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    const mapLocation = parts.find((part) => part.startsWith("Bản đồ:"))?.replace("Bản đồ:", "").trim() || "";
+    const freeShip = parts.find((part) => part.startsWith("Freeship:"))?.replace("Freeship:", "").trim() || "";
+    const shippingFee = parts.find((part) => part.startsWith("Phí ship:"))?.replace("Phí ship:", "").trim() || "";
+
+    return { parts, mapLocation, freeShip, shippingFee };
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6 font-sans">
       <div className="max-w-6xl mx-auto">
@@ -125,10 +138,34 @@ export default function OrdersPage() {
                         ))}
                     </tbody>
                   </table>
-                  <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
                      <p className="text-sm"><strong>Địa chỉ giao:</strong> {order.address}</p>
-                     <p className="text-sm"><strong>Ghi chú:</strong> {order.note || "Không có"}</p>
-                     <p className="text-sm"><strong>Thanh toán qua:</strong> {order.payment_method}</p>
+                     {(() => {
+                        const meta = parseOrderMeta(order.note || "");
+                        return (
+                          <>
+                            {meta.mapLocation && (
+                              <p className="text-sm">
+                                <strong>Vị trí bản đồ:</strong> {meta.mapLocation}
+                                <a
+                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meta.mapLocation)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="ml-2 text-blue-600 hover:underline"
+                                >
+                                  Mở Google Maps
+                                </a>
+                              </p>
+                            )}
+                            <p className="text-sm"><strong>Freeship:</strong> {meta.freeShip ? meta.freeShip : "Không rõ"}</p>
+                            <p className="text-sm"><strong>Phí ship:</strong> {meta.shippingFee ? meta.shippingFee : "Đang tính"}</p>
+                            {meta.parts.filter((part) => !part.startsWith("Freeship:") && !part.startsWith("Phí ship:") && !part.startsWith("Bản đồ:")) .length > 0 && (
+                              <p className="text-sm"><strong>Ghi chú:</strong> {meta.parts.filter((part) => !part.startsWith("Freeship:") && !part.startsWith("Phí ship:") && !part.startsWith("Bản đồ:")) .join(" | ")}</p>
+                            )}
+                            <p className="text-sm"><strong>Thanh toán qua:</strong> {order.payment_method}</p>
+                          </>
+                        );
+                     })()}
                   </div>
                 </div>
               )}

@@ -91,27 +91,27 @@ const categories = [
 
 export default function CategoryGrid() {
   return (
-    <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm mb-8">
-      <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 border-l-4 border-blue-600 pl-3 flex items-center gap-2">
+    <div className="bg-white p-3 md:p-6 rounded-2xl shadow-sm mb-8 border border-gray-100">
+      <h2 className="text-base md:text-xl font-bold text-gray-800 mb-3 md:mb-6 border-l-4 border-blue-600 pl-3 flex items-center gap-2">
         🏆 Danh mục nổi bật
       </h2>
 
       {/* Grid: Mobile 2 cột, Tablet 3 cột, Desktop 6 cột (để hiển thị đẹp 12 mục) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-4">
         {categories.map((cat) => (
           <Link
             href={cat.href}
             key={cat.id}
-            className="flex flex-col items-center group cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-all border border-transparent hover:border-blue-100"
+            className="flex flex-col items-center group cursor-pointer p-3 rounded-2xl hover:bg-gray-50 transition-all border border-gray-100 hover:border-blue-100 min-h-[118px]"
           >
             {/* Vòng tròn Icon - Vuông bo tròn nhẹ cho giống thẻ bài */}
             <div
-              className={`w-14 h-14 md:w-16 md:h-16 ${cat.color} rounded-2xl flex items-center justify-center text-2xl md:text-3xl mb-3 shadow-sm group-hover:scale-110 transition duration-300 text-blue-600`}
+              className={`w-12 h-12 md:w-16 md:h-16 ${cat.color} rounded-2xl flex items-center justify-center text-2xl md:text-3xl mb-2.5 shadow-sm group-hover:scale-110 transition duration-300 text-blue-600`}
             >
               {cat.icon}
             </div>
             {/* Tên danh mục */}
-            <span className="text-xs md:text-sm font-semibold text-gray-700 text-center group-hover:text-blue-600 line-clamp-2 min-h-[32px] flex items-center">
+            <span className="text-[11px] md:text-sm font-semibold text-gray-700 text-center group-hover:text-blue-600 line-clamp-2 min-h-[28px] flex items-center">
               {cat.name}
             </span>
           </Link>

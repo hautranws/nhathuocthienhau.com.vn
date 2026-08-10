@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useCart } from "@/context/CartContext";
 import FilterSidebar from "./FilterSidebar";
 
 interface Product {
@@ -29,6 +30,7 @@ const getThumbnail = (imgData: string) => {
 };
 
 const ProductItem = ({ product }: { product: Product }) => {
+  const { addToCart } = useCart();
   const isRx = product.category === "Thuốc" && product.is_prescription;
 
   // --- LOGIC QUY ĐỔI ĐƠN VỊ ---
@@ -155,9 +157,16 @@ const ProductItem = ({ product }: { product: Product }) => {
         ) : (
           <button
             className="w-full bg-blue-600 text-white font-bold py-2 rounded-full text-xs text-center mt-auto active:scale-95 transition-transform"
-            onClick={() => {
-              /* handle click */
-            }}
+            onClick={() =>
+              addToCart({
+                ...product,
+                id: product.id,
+                title: product.title,
+                price: currentPrice,
+                img: getThumbnail(product.img || ""),
+                unit: currentUnitName,
+              })
+            }
           >
             Chọn mua
           </button>
@@ -187,6 +196,11 @@ const SearchClient: React.FC<SearchClientProps> = ({
     maxPrice: "",
     usageType: "",
   });
+
+  useEffect(() => {
+    setQuery(initialQuery);
+    setProducts(initialProducts);
+  }, [initialQuery, initialProducts]);
 
   // Fetch products khi filter thay đổi
   const fetchProducts = useCallback(async () => {

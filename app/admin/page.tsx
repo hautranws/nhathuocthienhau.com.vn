@@ -188,6 +188,22 @@ export default function AdminDashboard() {
               Quản lý sản phẩm nổi bật
             </p>
           </Link>
+
+          {/* 11. Sản phẩm gợi ý giỏ hàng */}
+          <Link
+            href="/admin/suggested-products"
+            className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-md border-2 border-transparent hover:border-yellow-500 hover:shadow-xl transition cursor-pointer group"
+          >
+            <div className="text-5xl mb-3 group-hover:scale-110 transition">
+              🛍️
+            </div>
+            <h3 className="text-xl font-bold text-yellow-600 text-center">
+              SP Gợi ý
+            </h3>
+            <p className="text-gray-500 text-xs mt-1 text-center">
+              Hiện ở trang giỏ hàng
+            </p>
+          </Link>
         </div>
 
         {/* Quản lý sản phẩm trang chủ */}

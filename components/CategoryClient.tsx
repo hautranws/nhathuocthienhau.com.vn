@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import ProductCard from "./ProductCard";
 
 export default function CategoryClient({
   initialProducts = [],
@@ -107,88 +108,9 @@ export default function CategoryClient({
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {products.length > 0 ? (
-            products.map((product) => {
-              const isRx =
-                product.category === "Thuốc" && product.is_prescription;
-              return (
-                <Link
-                  key={product.id}
-                  href={`/product/${product.id}`}
-                  className="block group"
-                >
-                  <div className="bg-white p-4 rounded-lg shadow-sm hover:shadow-xl transition border border-gray-100 flex flex-col h-full relative group-hover:border-blue-200">
-                    {isRx && (
-                      <div className="absolute top-2 left-2 z-10">
-                        <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                          Rx
-                        </span>
-                      </div>
-                    )}
-                    {product.discount && !isRx && (
-                      <span className="absolute top-2 left-2 bg-red-600 text-white text-[10px] px-2 py-1 rounded font-bold z-10 shadow-sm">
-                        {product.discount}
-                      </span>
-                    )}
-                    <div className="w-full aspect-square relative rounded-lg mb-3 flex items-center justify-center bg-white group-hover:scale-105 transition duration-300 overflow-hidden">
-                      {product.img ? (
-                        <img
-                          src={
-                            product.img.startsWith("[")
-                              ? JSON.parse(product.img)[0]
-                              : product.img
-                          }
-                          alt={product.title || product.name}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <span className="text-3xl">📦</span>
-                      )}
-                    </div>
-                    <div className="flex-1 flex flex-col">
-                      <h3 className="font-bold text-gray-800 text-sm line-clamp-2 mb-2 group-hover:text-blue-700 min-h-[40px] transition">
-                        {product.name || product.title}
-                      </h3>
-                      <div className="flex flex-col gap-1 flex-1">
-                        {isRx ? (
-                          <span className="text-gray-500 text-xs">
-                            Cần tư vấn từ dược sĩ
-                          </span>
-                        ) : (
-                          <>
-                            <p className="text-blue-700 font-bold text-lg">
-                              {product.price?.toLocaleString("vi-VN")}đ
-                              {product.unit && (
-                                <span className="text-xs font-normal text-gray-500 ml-1">
-                                  / {product.unit}
-                                </span>
-                              )}
-                            </p>
-                            {(product.original_price || product.old_price) && (
-                              <p className="text-gray-400 text-xs line-through">
-                                {(
-                                  product.original_price || product.old_price
-                                ).toLocaleString("vi-VN")}
-                                đ
-                              </p>
-                            )}
-                          </>
-                        )}
-                      </div>
-
-                      {isRx ? (
-                        <div className="mt-4 w-full bg-blue-50 text-blue-600 font-bold py-2 rounded-full text-xs text-center border border-blue-100">
-                          Tư vấn ngay
-                        </div>
-                      ) : (
-                        <div className="mt-4 w-full bg-blue-600 text-white font-bold py-2 rounded-full text-xs text-center">
-                          Chọn mua
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })
+            products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))
           ) : (
             <div className="col-span-4 py-20 text-center bg-white rounded-xl border border-dashed border-gray-300">
               <p className="text-gray-500 text-lg mb-4">

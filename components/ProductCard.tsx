@@ -74,7 +74,7 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-4 flex flex-col h-full relative group">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300 p-3 md:p-4 flex flex-col h-full relative group">
       <Link href={`/product/${product.id}`} className="block mb-3">
         <div className="w-full aspect-square relative flex items-center justify-center overflow-hidden rounded-lg cursor-pointer bg-white">
           {isRx && (
@@ -89,14 +89,14 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
             alt={product.title}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            className="object-contain group-hover:scale-105 transition-transform duration-300"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         </div>
       </Link>
 
       <Link href={`/product/${product.id}`} className="block mb-2">
         <h3
-          className="text-gray-900 font-semibold text-sm leading-tight line-clamp-2 min-h-[40px] hover:text-blue-600 transition-colors cursor-pointer"
+          className="text-gray-900 font-semibold text-[13px] md:text-sm leading-tight line-clamp-2 min-h-9 hover:text-blue-600 transition-colors cursor-pointer"
           title={product.title}
         >
           {product.title}
@@ -118,7 +118,7 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
                       e.preventDefault();
                       setSelectedUnit(u);
                     }}
-                    className={`px-3 py-1 text-[11px] font-medium rounded-md border transition-all ${
+                    className={`px-2.5 py-1 text-[10px] font-medium rounded-md border transition-all ${
                       selectedUnit?.unit_name === u.unit_name
                         ? "border-blue-600 bg-blue-50 text-blue-600 shadow-sm"
                         : "border-gray-200 bg-gray-50 text-gray-500 hover:border-blue-300"
@@ -131,11 +131,11 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
             )}
 
             <div className="flex items-end gap-1">
-              <span className="text-blue-600 font-bold text-lg">
+              <span className="text-blue-600 font-bold text-[17px] md:text-lg">
                 {Number(currentPrice).toLocaleString("vi-VN")}đ
               </span>
               {currentUnitName && (
-                <span className="text-gray-500 text-xs mb-[2px]">
+                <span className="text-gray-500 text-[11px] mb-0.5">
                   / {currentUnitName}
                 </span>
               )}
@@ -146,11 +146,11 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
 
       <div className="mb-4">
         {product.specification ? (
-          <div className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded border border-gray-200 inline-block font-medium">
+          <div className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full border border-gray-200 inline-block font-medium">
             {product.specification}
           </div>
         ) : (
-          <div className="h-[20px]"></div>
+          <div className="h-5"></div>
         )}
       </div>
 
@@ -165,15 +165,20 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
         </a>
       ) : (
         <button
-          className="mt-auto w-full bg-blue-600 text-white font-bold py-2 rounded-full hover:bg-blue-700 transition-colors text-xs shadow-md shadow-blue-100 active:scale-95 transition-transform"
-          onClick={() =>
+          type="button"
+          className="mt-auto w-full bg-blue-600 text-white font-bold py-2 rounded-full hover:bg-blue-700 transition-all text-xs shadow-md shadow-blue-100 active:scale-95"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             addToCart({
               ...product,
-              price: currentPrice,
+              id: product.id,
+              title: product.title,
+              price: Number(currentPrice) || Number(product.price),
               unit: currentUnitName,
               sku: selectedUnit?.sku || product.sku,
-            })
-          }
+            });
+          }}
         >
           Chọn mua
         </button>

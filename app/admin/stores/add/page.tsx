@@ -16,6 +16,8 @@ export default function AddStorePage() {
     city_code: "",
     map_url: "",
     image_url: "",
+    lat: "",
+    lng: "",
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -57,10 +59,14 @@ export default function AddStorePage() {
       }
 
       // 2. Lưu vào DB
-      const { error } = await supabase.from("stores").insert([{
+      const payload = {
         ...formData,
-        image_url: uploadedImageUrl
-      }]);
+        image_url: uploadedImageUrl,
+        lat: formData.lat ? Number(formData.lat) : null,
+        lng: formData.lng ? Number(formData.lng) : null,
+      };
+
+      const { error } = await supabase.from("stores").insert([payload]);
 
       if (error) throw error;
 
@@ -116,12 +122,26 @@ export default function AddStorePage() {
               value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
           </div>
 
-          {/* Google Map & Ảnh */}
+          {/* Google Map & Tọa độ */}
           <div>
             <label className="block text-sm font-bold mb-1">Link Google Map (Share Link)</label>
             <input type="text" className="w-full border p-3 rounded" placeholder="https://maps.app.goo.gl/..." 
               value={formData.map_url} onChange={e => setFormData({...formData, map_url: e.target.value})} />
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold mb-1">Vĩ độ (lat)</label>
+              <input type="number" step="any" className="w-full border p-3 rounded" placeholder="10.7743"
+                value={formData.lat} onChange={e => setFormData({...formData, lat: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-1">Kinh độ (lng)</label>
+              <input type="number" step="any" className="w-full border p-3 rounded" placeholder="106.7000"
+                value={formData.lng} onChange={e => setFormData({...formData, lng: e.target.value})} />
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 -mt-2">Nhập lat/lng để tính chính xác giao trong ngày. Nếu để trống, hệ thống sẽ dùng cách suy đoán địa chỉ.</p>
 
           <div className="border-2 border-dashed border-gray-300 p-4 rounded text-center">
             <label className="cursor-pointer block">

@@ -53,35 +53,27 @@ export default function SearchBar() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchTerm.length > 1) {
-        const words = searchTerm.trim().split(/\s+/).filter((w) => w.length > 0);
+        const words = searchTerm
+          .trim()
+          .split(/\s+/)
+          .filter((w) => w.length > 0);
 
-        // Bước 1: AND - tất cả từ đều phải có trong tên
-        let queryBuilder = supabase
-          .from("products")
-          .select("id, title, price, img, old_price, category, is_prescription");
-
-        for (const word of words) {
-          queryBuilder = queryBuilder.ilike("title", `%${word}%`);
-        }
-
-        const { data: andData } = await queryBuilder.limit(5);
-
-        if (andData && andData.length > 0) {
-          setSuggestions(andData);
-        } else if (words.length > 1) {
-          // Bước 2 (fallback): OR - bất kỳ từ nào khớp (ưu tiên từ dài hơn)
-          const orFilter = words
-            .map((w) => `title.ilike.%${w}%`)
-            .join(",");
-          const { data: orData } = await supabase
+        const buildSearchQuery = () =>
+          supabase
             .from("products")
-            .select("id, title, price, img, old_price, category, is_prescription")
-            .or(orFilter)
-            .limit(5);
-          setSuggestions(orData || []);
-        } else {
-          setSuggestions([]);
-        }
+            .select(
+              "id, title, price, img, old_price, category, specification, is_prescription",
+            );
+
+        const orFilter = words
+          .map(
+            (word) =>
+              `title.ilike.%${word}%,category.ilike.%${word}%,specification.ilike.%${word}%`,
+          )
+          .join(",");
+
+        const { data } = await buildSearchQuery().or(orFilter).limit(5);
+        setSuggestions(data || []);
       } else {
         setSuggestions([]);
       }
@@ -100,8 +92,7 @@ export default function SearchBar() {
   const handleHistoryClick = (term: string) => {
     setSearchTerm(term);
     addToHistory(term);
-    setShowSuggestions(false);
-    router.push(`/search?q=${encodeURIComponent(term)}`);
+    setShowSuggestions(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -198,7 +189,11 @@ export default function SearchBar() {
                 {TOP_SEARCHES.map((tag, index) => (
                   <button
                     key={index}
-                    onClick={() => handleHistoryClick(tag)}
+                    onClick={() => {
+                      setSearchTerm(tag);
+                      addToHistory(tag);
+                      setShowSuggestions(true);
+                    }}
                     className="px-3 py-1 bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-700 text-sm rounded-full transition border border-gray-200"
                   >
                     {tag}
@@ -298,7 +293,11 @@ export default function SearchBar() {
         {TOP_SEARCHES.map((tag, index) => (
           <button
             key={index}
-            onClick={() => handleHistoryClick(tag)}
+            onClick={() => {
+              setSearchTerm(tag);
+              addToHistory(tag);
+              setShowSuggestions(true);
+            }}
             className="hover:underline hover:text-blue-700 transition-colors opacity-90 hover:opacity-100"
           >
             {tag}

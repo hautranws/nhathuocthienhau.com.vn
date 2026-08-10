@@ -20,7 +20,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [usageType, setUsageType] = useState("");
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleFilterChange = () => {
     onFilterChange({
@@ -59,14 +59,20 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   };
 
   return (
-    <aside className="w-full lg:w-64 bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+    <aside className="w-full lg:w-64 bg-white rounded-xl border border-gray-200 p-3 lg:p-4 shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-3 lg:mb-6">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="lg:hidden flex items-center gap-2 text-blue-600 font-bold"
+          className="w-full lg:w-auto flex items-center justify-between gap-2 text-blue-700 font-bold px-3 py-2.5 rounded-xl bg-blue-50 border border-blue-100 lg:bg-transparent lg:border-0 lg:px-0 lg:py-0"
         >
-          ☰ Bộ lọc nâng cao
+          <span className="flex items-center gap-2">
+            <span>☰</span>
+            <span>Bộ lọc nâng cao</span>
+          </span>
+          <span className="lg:hidden text-blue-500 text-sm">
+            {isOpen ? "▲" : "▼"}
+          </span>
         </button>
         <h2 className="hidden lg:block font-bold text-lg text-gray-800">
           Bộ lọc nâng cao
@@ -74,7 +80,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       </div>
 
       {/* Filters Container */}
-      <div className={`space-y-6 ${!isOpen && "hidden lg:block"}`}>
+      <div className={`space-y-5 lg:space-y-6 ${isOpen ? "block" : "hidden"} lg:block`}>
         {/* Danh mục sản phẩm */}
         <div>
           <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
@@ -84,7 +90,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             {["Tất cả", ...categories].map((category) => (
               <label
                 key={category}
-                className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg border border-transparent hover:border-gray-100"
               >
                 <input
                   type="radio"
@@ -151,7 +157,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     usageType,
                   });
                 }}
-                className="block w-full text-left px-3 py-2 text-sm border border-gray-200 rounded hover:bg-blue-50 hover:border-blue-300 transition"
+                className="block w-full text-left px-3 py-2.5 text-sm border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition"
               >
                 {range.label}
               </button>
@@ -173,7 +179,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             ].map((usage) => (
               <label
                 key={usage.value}
-                className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg border border-transparent hover:border-gray-100"
               >
                 <input
                   type="radio"
@@ -200,7 +206,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         {/* Clear Filters */}
         <button
           onClick={handleClearFilters}
-          className="w-full px-4 py-2 bg-gray-100 text-gray-800 rounded font-medium hover:bg-gray-200 transition border-t"
+          className="w-full px-4 py-2.5 bg-gray-100 text-gray-800 rounded-xl font-medium hover:bg-gray-200 transition border-t"
         >
           🔄 Xóa bộ lọc
         </button>

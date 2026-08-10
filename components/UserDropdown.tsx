@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { safeSupabaseSignOut } from "@/lib/supabaseClient";
 import { 
   User, 
   Package, 
@@ -24,7 +24,7 @@ export default function UserDropdown({ user }: UserDropdownProps) {
     "Khách hàng";
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await safeSupabaseSignOut();
     window.location.reload();
   };
 

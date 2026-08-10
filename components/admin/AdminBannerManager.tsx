@@ -6,6 +6,7 @@ interface Banner {
   id: number;
   image_url: string;
   active: boolean;
+  placement?: "desktop" | "mobile";
 }
 
 export default function AdminBannerManager() {
@@ -26,8 +27,10 @@ export default function AdminBannerManager() {
     fetchBanners();
   }, []);
 
-  // --- HÀM UPLOAD VÀ THÊM BANNER ---
-  const handleUploadBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadBanner = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    placement: "desktop" | "mobile",
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -62,7 +65,7 @@ export default function AdminBannerManager() {
       // 4. Lưu link vào Database
       const { error: dbError } = await supabase
         .from("banners_thienhau")
-        .insert([{ image_url: finalUrl, active: true }]);
+        .insert([{ image_url: finalUrl, active: true, placement }]);
 
       if (dbError) throw dbError;
 
@@ -79,6 +82,9 @@ export default function AdminBannerManager() {
       e.target.value = "";
     }
   };
+
+  const desktopBanners = banners.filter((banner) => (banner.placement || "desktop") === "desktop");
+  const mobileBanners = banners.filter((banner) => banner.placement === "mobile");
 
   // Xóa banner (Xóa cả trong DB và Storage nếu cần - ở đây xóa DB trước)
   const handleDeleteBanner = async (id: number) => {
@@ -109,9 +115,8 @@ export default function AdminBannerManager() {
       <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 text-sm text-yellow-800">
         <p className="font-bold">⚠️ Lưu ý cho nhân viên thiết kế:</p>
         <ul className="list-disc pl-5 mt-1 space-y-1">
-          <li>
-            Kích thước chuẩn: <strong>1610 x 492 pixel</strong> (Tỷ lệ 3.2:1).
-          </li>
+          <li>Kích thước banner máy tính: <strong>1610 x 492 pixel</strong>.</li>
+          <li>Kích thước banner điện thoại: <strong>900 x 1200 pixel</strong> hoặc ảnh dọc tương đương.</li>
           <li>Định dạng: JPG, PNG, WEBP.</li>
           <li>
             Dung lượng: Tự động từ chối nếu trên <strong>2MB</strong>.
@@ -119,16 +124,16 @@ export default function AdminBannerManager() {
         </ul>
       </div>
 
-      {/* --- KHU VỰC UPLOAD TRUYỀN THỐNG --- */}
-      <div className="mb-8 p-6 border border-blue-200 rounded-xl bg-blue-50 shadow-sm">
-        <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
-          ➕ Thêm Banner mới
-        </h3>
-        <div className="flex flex-col md:flex-row items-center gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+        <div className="p-6 border border-blue-200 rounded-xl bg-blue-50 shadow-sm">
+          <h3 className="text-lg font-bold text-blue-800 mb-2 flex items-center gap-2">
+            🖥️ Banner máy tính
+          </h3>
+          <p className="text-sm text-blue-700 mb-4">Ảnh ngang cho màn hình desktop.</p>
           <input
             type="file"
             accept="image/*"
-            onChange={handleUploadBanner}
+            onChange={(e) => uploadBanner(e, "desktop")}
             disabled={uploading}
             className="block w-full text-sm text-gray-500
               file:mr-4 file:py-3 file:px-6
@@ -138,23 +143,46 @@ export default function AdminBannerManager() {
               hover:file:bg-blue-700 cursor-pointer transition"
           />
         </div>
-        {uploading && (
-          <div className="mt-4 flex items-center gap-2 text-blue-600 font-bold text-sm bg-white p-3 rounded-lg border border-blue-100 inline-flex">
-            <span className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></span>
-            Đang xử lý và tải ảnh lên Supabase...
-          </div>
-        )}
+
+        <div className="p-6 border border-green-200 rounded-xl bg-green-50 shadow-sm">
+          <h3 className="text-lg font-bold text-green-800 mb-2 flex items-center gap-2">
+            📱 Banner điện thoại
+          </h3>
+          <p className="text-sm text-green-700 mb-4">Ảnh riêng cho giao diện mobile.</p>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => uploadBanner(e, "mobile")}
+            disabled={uploading}
+            className="block w-full text-sm text-gray-500
+              file:mr-4 file:py-3 file:px-6
+              file:rounded-full file:border-0
+              file:text-sm file:font-bold
+              file:bg-green-600 file:text-white
+              hover:file:bg-green-700 cursor-pointer transition"
+          />
+        </div>
       </div>
 
+      {uploading && (
+        <div className="mt-2 mb-8 inline-flex items-center gap-2 text-blue-600 font-bold text-sm bg-white p-3 rounded-lg border border-blue-100">
+          <span className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></span>
+          Đang xử lý và tải ảnh lên Supabase...
+        </div>
+      )}
+
       {/* Danh sách banner */}
-      <div className="space-y-4">
-        {banners.map((banner) => (
+      <div className="space-y-8">
+        <div>
+          <h3 className="text-base font-bold text-gray-800 mb-3">Banner máy tính</h3>
+          <div className="space-y-4">
+            {desktopBanners.map((banner) => (
           <div
             key={banner.id}
             className="flex items-center gap-4 p-3 border rounded-lg hover:bg-gray-50 transition"
           >
             {/* Ảnh Preview */}
-            <div className="w-32 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0 relative">
+            <div className="w-32 h-16 bg-gray-200 rounded overflow-hidden shrink-0 relative">
               <img
                 src={banner.image_url}
                 alt="Banner"
@@ -199,10 +227,67 @@ export default function AdminBannerManager() {
               </button>
             </div>
           </div>
-        ))}
-        {banners.length === 0 && (
-          <p className="text-center text-gray-400">Chưa có banner nào.</p>
-        )}
+            ))}
+            {desktopBanners.length === 0 && (
+              <p className="text-center text-gray-400 py-4">Chưa có banner máy tính nào.</p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-base font-bold text-gray-800 mb-3">Banner điện thoại</h3>
+          <div className="space-y-4">
+            {mobileBanners.map((banner) => (
+              <div
+                key={banner.id}
+                className="flex items-center gap-4 p-3 border rounded-lg hover:bg-gray-50 transition"
+              >
+                <div className="w-32 h-16 bg-gray-200 rounded overflow-hidden shrink-0 relative">
+                  <img
+                    src={banner.image_url}
+                    alt="Banner"
+                    className={`w-full h-full object-cover ${
+                      !banner.active ? "grayscale opacity-50" : ""
+                    }`}
+                  />
+                  {!banner.active && (
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white bg-black/50">
+                      ĐÃ TẮT
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-xs text-gray-500 truncate" title={banner.image_url}>
+                    {banner.image_url}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleToggleActive(banner.id, banner.active)}
+                    className={`px-3 py-1 rounded text-xs font-bold ${
+                      banner.active
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {banner.active ? "Đang hiện" : "Đang ẩn"}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBanner(banner.id)}
+                    className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+            {mobileBanners.length === 0 && (
+              <p className="text-center text-gray-400 py-4">Chưa có banner điện thoại nào.</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

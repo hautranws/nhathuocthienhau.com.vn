@@ -14,15 +14,28 @@ export async function GET(request: NextRequest) {
 
     // Tìm kiếm theo tên - logic đa từ: tách từng từ và yêu cầu tất cả đều có trong tên (AND)
     if (query) {
-      const words = query.trim().split(/\s+/).filter((w) => w.length > 0);
+      const words = query
+        .trim()
+        .split(/\s+/)
+        .filter((w) => w.length > 0);
       if (words.length <= 1) {
-        // Tìm kiếm 1 từ: giữ nguyên
-        supabaseQuery = supabaseQuery.ilike("title", `%${query}%`);
+        // Tìm kiếm 1 từ: khớp nhiều cột để không bỏ sót gợi ý phổ biến
+        supabaseQuery = supabaseQuery.or(
+          [
+            `title.ilike.%${query}%`,
+            `category.ilike.%${query}%`,
+            `specification.ilike.%${query}%`,
+          ].join(","),
+        );
       } else {
-        // Nhiều từ: AND - mỗi từ phải xuất hiện trong tên
-        for (const word of words) {
-          supabaseQuery = supabaseQuery.ilike("title", `%${word}%`);
-        }
+        // Nhiều từ: ưu tiên OR theo nhiều cột để bắt được các từ viết rời
+        const orFilter = words
+          .map(
+            (word) =>
+              `title.ilike.%${word}%,category.ilike.%${word}%,specification.ilike.%${word}%`,
+          )
+          .join(",");
+        supabaseQuery = supabaseQuery.or(orFilter);
       }
     }
 

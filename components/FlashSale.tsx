@@ -103,14 +103,14 @@ export default function FlashSale() {
   if (!loading && products.length === 0) return null;
 
   return (
-    <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-xl p-4 md:p-6 mb-8 text-white shadow-xl font-sans relative overflow-hidden">
+    <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl p-3 md:p-6 mb-8 text-white shadow-xl font-sans relative overflow-hidden">
       {/* Hiệu ứng tia sét trang trí */}
       <div className="absolute top-0 right-0 -mr-10 -mt-10 w-32 h-32 bg-yellow-400 opacity-20 blur-2xl rounded-full"></div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 relative z-10">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter flex items-center gap-2">
-            <span className="text-4xl animate-bounce">⚡</span>F
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3 relative z-10">
+        <div className="flex items-center gap-3 md:gap-4">
+          <h2 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter flex items-center gap-2">
+            <span className="text-3xl md:text-4xl animate-bounce">⚡</span>F
             <span className="text-yellow-300">lash</span> Sale
           </h2>
 
@@ -140,7 +140,7 @@ export default function FlashSale() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 relative z-10">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 relative z-10">
         {products.map((item) => {
           const isRx = item.category === "Thuốc" && item.is_prescription;
           const discountPercent =
@@ -165,7 +165,7 @@ export default function FlashSale() {
             <Link
               href={`/product/${item.id}`} // Link này dẫn đến trang chi tiết
               key={item.id}
-              className="bg-white rounded-xl p-3 text-gray-800 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer relative group block transform hover:-translate-y-1"
+              className="bg-white rounded-2xl p-2.5 md:p-3 text-gray-800 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer relative group block transform hover:-translate-y-1"
             >
               {isRx && (
                 <div className="absolute top-2 left-2 z-10">
@@ -188,7 +188,7 @@ export default function FlashSale() {
                 />
               </div>
 
-              <h3 className="text-xs md:text-sm font-semibold line-clamp-2 h-8 md:h-10 mb-2 group-hover:text-red-600 transition-colors">
+              <h3 className="text-[11px] md:text-sm font-semibold line-clamp-2 h-8 md:h-10 mb-2 group-hover:text-red-600 transition-colors">
                 {item.title}
               </h3>
 

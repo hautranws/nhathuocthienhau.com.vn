@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { getSafeSupabaseUser, supabase } from "@/lib/supabaseClient";
 import { Search, PackageOpen, ShoppingBag, Truck, CheckCircle, XCircle, RefreshCcw } from "lucide-react";
 
 // Định nghĩa các trạng thái đơn hàng (Tab)
@@ -23,7 +23,7 @@ export default function MyOrdersPage() {
   // --- 1. LẤY DỮ LIỆU ĐƠN HÀNG TỪ SUPABASE ---
   useEffect(() => {
     const fetchOrders = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getSafeSupabaseUser();
       if (!user) return;
 
       // [ĐÃ SỬA] Lấy thêm dữ liệu từ bảng order_items

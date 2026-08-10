@@ -77,8 +77,8 @@ export default function EditProductPage() {
 
   // --- FORMAT GIÁ: tự thêm dấu chấm mỗi 3 số ---
   const formatPrice = (val: string) => {
-    const digits = val.replace(/\D/g, '');
-    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const digits = val.replace(/\D/g, "");
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
   const [hasConversion, setHasConversion] = useState(false);
@@ -238,8 +238,8 @@ export default function EditProductPage() {
         .from("products")
         .update({
           title: product.title,
-          price: Number(String(product.price).replace(/\./g, '')),
-          old_price: Number(String(product.old_price).replace(/\./g, '')),
+          price: Number(String(product.price).replace(/\./g, "")),
+          old_price: Number(String(product.old_price).replace(/\./g, "")),
           img: JSON.stringify(finalImages), // Lưu dưới dạng mảng JSON string
           category_id: product.category_id,
           description: product.description,
@@ -421,7 +421,10 @@ export default function EditProductPage() {
                 className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                 value={product.old_price}
                 onChange={(e) =>
-                  setProduct({ ...product, old_price: formatPrice(e.target.value) })
+                  setProduct({
+                    ...product,
+                    old_price: formatPrice(e.target.value),
+                  })
                 }
               />
             </div>

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { getSafeSupabaseUser, safeSupabaseSignOut } from "@/lib/supabaseClient";
 import { 
   User, 
   Package, 
@@ -22,14 +22,14 @@ export default function ProfileLayout({
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      const currentUser = await getSafeSupabaseUser();
+      setUser(currentUser);
     };
     getUser();
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await safeSupabaseSignOut();
     window.location.href = "/";
   };
 

@@ -3,7 +3,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useCart } from "@/context/CartContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { getSafeSupabaseUser, supabase } from "@/lib/supabaseClient";
+import SuggestedProductsCart from "@/components/SuggestedProductsCart";
 
 // --- KHUNG GIỜ GIAO HÀNG (Giữ lại biến để không bị lỗi code cũ) ---
 const TIME_SLOTS = [
@@ -46,6 +47,10 @@ export default function CheckoutPage() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
   const [shippingEstimate, setShippingEstimate] = useState<string>(""); 
+  const [shippingMode, setShippingMode] = useState<"standard" | "express">("standard");
+  const [expressShippingAvailable, setExpressShippingAvailable] = useState(false);
+  const [expressShippingDistance, setExpressShippingDistance] = useState<number | null>(null);
+  const [isScanningAddress, setIsScanningAddress] = useState(false);
 
   // --- STATE COUPON ---
   const [couponCode, setCouponCode] = useState("");
@@ -75,14 +80,31 @@ export default function CheckoutPage() {
       return lowerCity.includes("hồ chí minh") || lowerCity.includes("hcm") || lowerCity.includes("sài gòn");
   }, [currentCityName]);
 
-  // --- [MỚI] LOGIC PHÍ SHIP CHUẨN SHOPEE ---
+  const calculateDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+  };
+
+  const hasExpressShippingEligibility = useMemo(() => {
+      return deliveryMethod === 'home' && subTotal >= 300000 && expressShippingAvailable;
+  }, [deliveryMethod, subTotal, expressShippingAvailable]);
+
+  // --- LOGIC PHÍ SHIP ---
   const shippingFee = useMemo(() => {
       if (deliveryMethod === 'store') return 0;
-      // Đơn >= 50k là Freeship
-      if (subTotal >= 50000) return 0; 
-      // Dưới 50k: HCM 18k, tỉnh khác 32k
-      return isHCMC ? 18000 : 32000; 
-  }, [deliveryMethod, subTotal, isHCMC]);
+      if (shippingMode === 'express' && hasExpressShippingEligibility) return 0;
+      if (subTotal >= 99000) return 0;
+      return isHCMC ? 18000 : 32000;
+  }, [deliveryMethod, shippingMode, subTotal, isHCMC, hasExpressShippingEligibility]);
 
   // --- INIT DATA ---
   useEffect(() => {
@@ -140,10 +162,112 @@ export default function CheckoutPage() {
   }, [addressData.district]);
 
   useEffect(() => {
+    if (shippingMode === 'express' && !hasExpressShippingEligibility) {
+        setShippingMode('standard');
+    }
+  }, [shippingMode, hasExpressShippingEligibility]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkExpressShipping = async () => {
+        if (deliveryMethod !== 'home') {
+            setExpressShippingAvailable(false);
+            setExpressShippingDistance(null);
+            return;
+        }
+
+        const addressText = selectedAddressId !== 'new'
+            ? (savedAddresses.find((address: any) => address.id.toString() === selectedAddressId)?.full_address || "")
+            : [addressData.specific, addressData.ward.split("|")[1], addressData.district.split("|")[1], addressData.city.split("|")[1]].filter(Boolean).join(", ");
+
+        if (!addressText) {
+            setExpressShippingAvailable(false);
+            setExpressShippingDistance(null);
+            return;
+        }
+
+        setIsScanningAddress(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=vn&q=${encodeURIComponent(addressText)}`);
+            const data = await response.json();
+            const targetCoords = data?.[0] ? { lat: Number(data[0].lat), lon: Number(data[0].lon) } : null;
+
+            if (!targetCoords || pharmacyLocations.length === 0) {
+                if (isMounted) {
+                    setExpressShippingAvailable(false);
+                    setExpressShippingDistance(null);
+                }
+                return;
+            }
+
+            const selectedDistrict = addressData.district.split("|")[1]?.toLowerCase() || "";
+            const selectedWard = addressData.ward.split("|")[1]?.toLowerCase() || "";
+            const selectedCity = addressData.city.split("|")[1]?.toLowerCase() || "";
+
+            const nearbyStores = await Promise.all(
+                pharmacyLocations.map(async (store: any) => {
+                    const storeText = [store.address, store.name, selectedCity, selectedDistrict].filter(Boolean).join(", ");
+                    const storeAddressText = store.address || store.name || "";
+                    const normalizedStoreText = storeAddressText.toLowerCase();
+                    const normalizedDistrict = selectedDistrict.toLowerCase();
+                    const normalizedWard = selectedWard.toLowerCase();
+                    const sameAreaFallback = Boolean(
+                        (normalizedDistrict && normalizedStoreText.includes(normalizedDistrict)) ||
+                        (normalizedWard && normalizedStoreText.includes(normalizedWard)) ||
+                        (selectedCity && normalizedStoreText.includes(selectedCity))
+                    );
+
+                    let distanceKm = 99999;
+
+                    if (store.lat && store.lng) {
+                        distanceKm = calculateDistanceKm(targetCoords.lat, targetCoords.lon, Number(store.lat), Number(store.lng));
+                    } else {
+                        try {
+                            const storeResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=vn&q=${encodeURIComponent(storeText)}`);
+                            const storeData = await storeResponse.json();
+                            if (storeData?.[0]) {
+                                const storeLat = Number(storeData[0].lat);
+                                const storeLon = Number(storeData[0].lon);
+                                distanceKm = calculateDistanceKm(targetCoords.lat, targetCoords.lon, storeLat, storeLon);
+                            }
+                        } catch (error) {
+                            distanceKm = sameAreaFallback ? 5 : 99999;
+                        }
+                    }
+
+                    return {
+                        ...store,
+                        distanceKm,
+                        sameAreaFallback,
+                    };
+                })
+            );
+
+            const eligibleStores = nearbyStores.filter((store: any) => store.distanceKm <= 10 || store.sameAreaFallback);
+
+            if (isMounted) {
+                setExpressShippingAvailable(eligibleStores.length > 0);
+                setExpressShippingDistance(eligibleStores.length > 0 ? Math.min(...eligibleStores.map((store: any) => store.distanceKm)) : null);
+            }
+        } catch (error) {
+            if (isMounted) {
+                setExpressShippingAvailable(false);
+                setExpressShippingDistance(null);
+            }
+        } finally {
+            if (isMounted) setIsScanningAddress(false);
+        }
+    };
+
+    checkExpressShipping();
+    return () => { isMounted = false; };
+  }, [deliveryMethod, selectedAddressId, addressData.city, addressData.district, addressData.ward, addressData.specific, savedAddresses, pharmacyLocations]);
+
+  useEffect(() => {
     if (cart.length > 0 && selectedItems.length === 0) setSelectedItems(cart.map((item) => item.id));
     
     const fetchData = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getSafeSupabaseUser();
         setUser(user);
         if (user) {
             const { data: addresses } = await supabase.from("user_addresses").select("*").eq("user_id", user.id).order("is_default", { ascending: false });
@@ -201,8 +325,12 @@ export default function CheckoutPage() {
       const id = e.target.value; setSelectedAddressId(id);
       if (id !== 'new') {
           const addr = savedAddresses.find(a => a.id.toString() === id);
-          if (addr) setFormValues(prev => ({ ...prev, fullName: addr.name || "", phone: addr.phone || "" }));
-      } else { setAddressData({ city: "", district: "", ward: "", specific: "" }); }
+          if (addr) {
+              setFormValues(prev => ({ ...prev, fullName: addr.name || "", phone: addr.phone || "" }));
+          }
+      } else {
+          setAddressData({ city: "", district: "", ward: "", specific: "" });
+      }
   };
 
   const getFullAddress = () => {
@@ -320,12 +448,23 @@ export default function CheckoutPage() {
 
     let deliveryNote = "";
     if (deliveryMethod === 'home') {
-        deliveryNote = `Giao tiêu chuẩn: ${shippingEstimate}`;
+        deliveryNote = shippingMode === 'express'
+            ? `Giao trong ngày: ${shippingEstimate || 'Trong ngày'}`
+            : `Giao tiêu chuẩn: ${shippingEstimate}`;
     }
+
+    const freeShipText = shippingFee === 0 ? "Có" : "Không";
+    const orderNote = [
+      deliveryNote ? `${deliveryNote}` : null,
+      formValues.note ? formValues.note : null,
+      `Phương thức ship: ${shippingMode === 'express' ? 'Giao trong ngày' : 'Giao tiêu chuẩn'}`,
+      `Freeship: ${freeShipText}`,
+      `Phí ship: ${shippingFee.toLocaleString("vi-VN")}đ`,
+    ].filter(Boolean).join(" | ");
 
     const orderInfo = {
       name: formValues.fullName, phone: formValues.phone, address: finalAddress, 
-      note: `${deliveryNote}. ${formValues.note}`, 
+      note: orderNote,
       deliveryMethod: deliveryMethod
     };
 
@@ -340,7 +479,10 @@ export default function CheckoutPage() {
           couponCode: appliedCoupon ? (appliedCoupon as any).code : null, 
           customer: orderInfo, 
           paymentMethod: paymentMethod,
-          userId: user?.id 
+          userId: user?.id,
+          shippingFee,
+          isFreeShip: shippingFee === 0,
+          shippingMode,
         }),
       });
       const data = await response.json();
@@ -435,15 +577,29 @@ export default function CheckoutPage() {
                             </div>
                         )}
 
-                        <div className="pt-2">
-                            <div className="bg-blue-50 p-3 rounded border border-blue-200 flex items-center gap-3">
-                                <span className="text-2xl text-blue-600">🚚</span>
-                                <div>
-                                    <p className="text-sm font-bold text-blue-800">Giao hàng tiêu chuẩn</p>
-                                    <p className="text-xs text-blue-700 font-medium">
-                                        {shippingEstimate || "Vui lòng chọn địa chỉ để xem ngày giao"}
-                                    </p>
-                                </div>
+                        <div className="space-y-3">
+                            <div className="grid gap-2">
+                                <label className={`p-3 border rounded-lg cursor-pointer ${shippingMode === 'standard' ? 'border-blue-600 bg-blue-50' : 'hover:bg-gray-50'}`}>
+                                    <div className="flex items-start gap-2">
+                                        <input type="radio" name="shippingMode" checked={shippingMode === 'standard'} onChange={() => setShippingMode('standard')} className="mt-1" />
+                                        <div>
+                                            <p className="text-sm font-bold text-blue-800">Giao tiêu chuẩn</p>
+                                            <p className="text-xs text-blue-700 font-medium">Freeship từ 99k • Dự kiến {shippingEstimate || 'đang kiểm tra...'}</p>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label className={`p-3 border rounded-lg ${hasExpressShippingEligibility ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'} ${shippingMode === 'express' ? 'border-blue-600 bg-blue-50' : 'hover:bg-gray-50'}`}>
+                                    <div className="flex items-start gap-2">
+                                        <input type="radio" name="shippingMode" checked={shippingMode === 'express'} onChange={() => setShippingMode('express')} disabled={!hasExpressShippingEligibility} className="mt-1" />
+                                        <div>
+                                            <p className="text-sm font-bold text-blue-800">Giao trong ngày</p>
+                                            <p className="text-xs text-blue-700 font-medium">
+                                                {isScanningAddress ? 'Đang quét địa chỉ...' : hasExpressShippingEligibility ? `Có thể giao ngay • Cơ sở gần nhất cách ${expressShippingDistance?.toFixed(1)}km` : subTotal < 300000 ? 'Đơn tối thiểu 300k để chọn giao nhanh' : 'Cần địa chỉ trong vòng 10km từ cơ sở hiện tại'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -550,7 +706,8 @@ export default function CheckoutPage() {
                         <span>Phí vận chuyển:</span>
                         {shippingFee === 0 ? <span className="text-green-600 font-bold">Miễn phí</span> : <span>{shippingFee.toLocaleString("vi-VN")}đ</span>}
                     </div>
-                    {deliveryMethod === 'home' && subTotal < 50000 && <p className="text-xs text-orange-500 italic text-right">Mua thêm {(50000 - subTotal).toLocaleString("vi-VN")}đ để được Freeship</p>}
+                    {deliveryMethod === 'home' && shippingMode === 'express' && <p className="text-xs text-green-600 italic text-right">Giao trong ngày miễn phí khi đơn từ 300k và khoảng cách ≤10km</p>}
+                    {deliveryMethod === 'home' && subTotal < 99000 && <p className="text-xs text-orange-500 italic text-right">Mua thêm {(99000 - subTotal).toLocaleString("vi-VN")}đ để được Freeship tiêu chuẩn</p>}
                     
                     {discountAmount > 0 && <div className="flex justify-between text-green-600 font-bold"><span>Giảm giá:</span><span>-{discountAmount.toLocaleString("vi-VN")}đ</span></div>}
                     <div className="flex justify-between pt-2 border-t border-dashed text-base">
@@ -566,6 +723,10 @@ export default function CheckoutPage() {
             </div>
           </div>
         </div>
+
+        {/* Sản phẩm gợi ý */}
+        <SuggestedProductsCart />
+
       </div>
     </div>
   );

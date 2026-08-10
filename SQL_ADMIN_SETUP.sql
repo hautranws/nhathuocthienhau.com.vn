@@ -57,3 +57,33 @@ SELECT email, full_name, role, is_active, created_at FROM admin_users ORDER BY c
 
 -- 4. Xóa admin (nếu cần)
 DELETE FROM admin_users WHERE email = 'admin@example.com';
+
+-- ============================================
+-- STORES COORDINATES - TỌA ĐỘ NHÀ THUỐC
+-- ============================================
+
+-- 1. Thêm cột tọa độ cho bảng stores nếu chưa có
+ALTER TABLE stores
+  ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
+
+-- 2. Tạo index nếu sau này cần lọc theo tọa độ
+CREATE INDEX IF NOT EXISTS idx_stores_lat ON stores(lat);
+CREATE INDEX IF NOT EXISTS idx_stores_lng ON stores(lng);
+
+-- 3. Kiểm tra dữ liệu
+-- SELECT id, name, address, lat, lng FROM stores ORDER BY id DESC;
+
+-- ============================================
+-- BANNERS PLACEMENT - BANNER MÁY TÍNH / ĐIỆN THOẠI
+-- ============================================
+
+-- 1. Thêm cột placement để phân biệt banner hiển thị theo thiết bị
+ALTER TABLE banners_thienhau
+  ADD COLUMN IF NOT EXISTS placement VARCHAR(20) NOT NULL DEFAULT 'desktop';
+
+-- 2. Index cho lọc nhanh banner theo thiết bị
+CREATE INDEX IF NOT EXISTS idx_banners_thienhau_placement ON banners_thienhau(placement);
+
+-- 3. Gợi ý chuẩn hóa dữ liệu cũ (nếu muốn)
+-- UPDATE banners_thienhau SET placement = 'desktop' WHERE placement IS NULL;

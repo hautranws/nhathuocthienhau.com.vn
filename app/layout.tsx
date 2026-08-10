@@ -4,6 +4,7 @@ import "./globals.css";
 // Import CartProvider
 import { CartProvider } from "@/context/CartContext";
 import Header from "@/components/Header";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import Footer from "@/components/Footer";
 import LiveChat from "@/components/LiveChat";
 import PageLoader from "@/components/PageLoader";
@@ -32,12 +33,18 @@ export default function RootLayout({
           {/* Thanh thông báo chạy chữ */}
           <div className="w-full bg-[#0a6e3f] overflow-hidden py-1.5">
             <span className="animate-marquee text-white text-sm font-medium">
-              🚚&nbsp; FREESHIP TOÀN QUỐC TẬN NHÀ CHO ĐƠN TỪ 99K &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✨&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FREESHIP TOÀN QUỐC TẬN NHÀ CHO ĐƠN TỪ 99K &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✨&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FREESHIP TOÀN QUỐC TẬN NHÀ CHO ĐƠN TỪ 99K
+              🚚&nbsp; FREESHIP TOÀN QUỐC TẬN NHÀ CHO ĐƠN TỪ 99K
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✨&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              FREESHIP TOÀN QUỐC TẬN NHÀ CHO ĐƠN TỪ 99K
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;✨&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              FREESHIP TOÀN QUỐC TẬN NHÀ CHO ĐƠN TỪ 99K
             </span>
           </div>
           <Header />
 
-          {children}
+          <div className="pb-20 md:pb-0">{children}</div>
+
+          <MobileBottomNav />
 
           <LiveChat />
 

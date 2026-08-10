@@ -137,21 +137,28 @@ export default function ProductManagementPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 setCurrentPage(1);
                 setSearchTerm(searchInput);
               }
             }}
           />
           <button
-            onClick={() => { setCurrentPage(1); setSearchTerm(searchInput); }}
+            onClick={() => {
+              setCurrentPage(1);
+              setSearchTerm(searchInput);
+            }}
             className="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 transition text-sm"
           >
             Tìm
           </button>
           {searchTerm && (
             <button
-              onClick={() => { setSearchInput(''); setSearchTerm(''); setCurrentPage(1); }}
+              onClick={() => {
+                setSearchInput("");
+                setSearchTerm("");
+                setCurrentPage(1);
+              }}
               className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-300 transition text-sm"
             >
               ✕ Xóa

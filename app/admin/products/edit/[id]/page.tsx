@@ -52,8 +52,8 @@ export default function EditProductPage({
   });
   // --- FORMAT GIÁ: tự thêm dấu chấm mỗi 3 số ---
   const formatPrice = (val: string) => {
-    const digits = val.replace(/\D/g, '');
-    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const digits = val.replace(/\D/g, "");
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
   // --- MỚI: State và logic QUY ĐỔI ĐƠN VỊ ---
   const [hasConversion, setHasConversion] = useState(false);
@@ -150,8 +150,8 @@ export default function EditProductPage({
           // Đổ dữ liệu vào Form
           setFormData({
             title: data.title || "",
-            price: formatPrice(String(data.price || '')),
-            old_price: formatPrice(String(data.old_price || '')),
+            price: formatPrice(String(data.price || "")),
+            old_price: formatPrice(String(data.old_price || "")),
             category: data.category || "",
             sub_category: subs,
             brand: data.brand || "",
@@ -318,8 +318,10 @@ export default function EditProductPage({
         ...formData,
         img: imgJsonString, // Lưu chuỗi JSON link ảnh
         sub_category: subCategoryString,
-        price: Number(String(formData.price).replace(/\./g, '')),
-        old_price: formData.old_price ? Number(String(formData.old_price).replace(/\./g, '')) : 0,
+        price: Number(String(formData.price).replace(/\./g, "")),
+        old_price: formData.old_price
+          ? Number(String(formData.old_price).replace(/\./g, ""))
+          : 0,
         conversion_units: hasConversion
           ? JSON.stringify(conversionUnits.filter((u) => u.unit_name))
           : null,
@@ -521,7 +523,10 @@ export default function EditProductPage({
                 className="w-full p-3 border rounded-lg"
                 value={formData.price}
                 onChange={(e) =>
-                  setFormData({ ...formData, price: formatPrice(e.target.value) })
+                  setFormData({
+                    ...formData,
+                    price: formatPrice(e.target.value),
+                  })
                 }
                 required
               />
@@ -535,7 +540,10 @@ export default function EditProductPage({
                 className="w-full p-3 border rounded-lg"
                 value={formData.old_price}
                 onChange={(e) =>
-                  setFormData({ ...formData, old_price: formatPrice(e.target.value) })
+                  setFormData({
+                    ...formData,
+                    old_price: formatPrice(e.target.value),
+                  })
                 }
               />
             </div>

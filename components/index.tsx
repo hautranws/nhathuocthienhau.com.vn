@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import { supabase } from "@/lib/supabaseClient";
+import { getSafeSupabaseUser, safeSupabaseSignOut } from "@/lib/supabaseClient";
 
 // Import các file đã tách
 import { Icons } from "./icons";
@@ -17,17 +17,15 @@ export default function Header() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
+      const currentUser = await getSafeSupabaseUser();
+      setUser(currentUser);
     };
     checkUser();
   }, []);
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await safeSupabaseSignOut();
     setUser(null);
     window.location.reload();
   };

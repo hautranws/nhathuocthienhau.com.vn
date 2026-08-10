@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { getSafeSupabaseUser, supabase } from "@/lib/supabaseClient";
 import { Plus, MapPin, Edit2, Trash2, X } from "lucide-react";
 
 export default function AddressPage() {
@@ -26,7 +26,7 @@ export default function AddressPage() {
   }, []);
 
   const fetchAddresses = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSafeSupabaseUser();
     if (!user) return;
 
     const { data, error } = await supabase
@@ -65,7 +65,7 @@ export default function AddressPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSafeSupabaseUser();
     if (!user) return;
 
     // Ghép địa chỉ lại thành 1 chuỗi hiển thị

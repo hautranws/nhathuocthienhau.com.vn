@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { getSafeSupabaseUser, supabase } from "@/lib/supabaseClient";
 import { User, Calendar, Phone, Edit3, X } from "lucide-react";
 
 export default function ProfilePage() {
@@ -20,7 +20,7 @@ export default function ProfilePage() {
   }, []);
 
   const fetchUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSafeSupabaseUser();
     setUser(user);
     if (user) {
       setFormData({

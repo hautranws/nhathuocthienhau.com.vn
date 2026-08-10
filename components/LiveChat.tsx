@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { getSafeSupabaseUser, supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { Paperclip, X } from "lucide-react";
 
@@ -28,9 +28,7 @@ export default function LiveChat() {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const user = await getSafeSupabaseUser();
         setCurrentUser(user);
       } catch (error) {
         console.warn("Supabase getUser failed in LiveChat:", error);

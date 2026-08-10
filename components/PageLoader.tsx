@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import Image from 'next/image';
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 export default function PageLoader() {
   const pathname = usePathname();
@@ -16,13 +16,13 @@ export default function PageLoader() {
   // Hiện loader khi click vào link nội bộ
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      const anchor = (e.target as HTMLElement).closest('a');
+      const anchor = (e.target as HTMLElement).closest("a");
       if (
         anchor &&
         anchor.href &&
         !anchor.target &&
-        !anchor.href.startsWith('mailto:') &&
-        !anchor.href.startsWith('tel:') &&
+        !anchor.href.startsWith("mailto:") &&
+        !anchor.href.startsWith("tel:") &&
         anchor.origin === window.location.origin &&
         anchor.pathname !== window.location.pathname
       ) {
@@ -30,8 +30,8 @@ export default function PageLoader() {
       }
     };
 
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
   }, []);
 
   if (!loading) return null;
@@ -45,9 +45,11 @@ export default function PageLoader() {
           width={72}
           height={72}
           className="animate-spin"
-          style={{ animationDuration: '1s', animationTimingFunction: 'linear' }}
+          style={{ animationDuration: "1s", animationTimingFunction: "linear" }}
         />
-        <p className="text-gray-500 text-sm font-medium tracking-wide">Đang tải...</p>
+        <p className="text-gray-500 text-sm font-medium tracking-wide">
+          Đang tải...
+        </p>
       </div>
     </div>
   );

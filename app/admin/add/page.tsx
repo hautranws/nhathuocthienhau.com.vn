@@ -127,8 +127,8 @@ export default function AddProductPage() {
 
   // --- FORMAT GIÁ: tự thêm dấu chấm mỗi 3 số ---
   const formatPrice = (val: string) => {
-    const digits = val.replace(/\D/g, '');
-    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const digits = val.replace(/\D/g, "");
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
   // --- HÀM XỬ LÝ CHỌN FILE TỪ MÁY TÍNH ---
@@ -254,8 +254,8 @@ export default function AddProductPage() {
 
       const payload = {
         title: formData.title,
-        price: formData.price.replace(/\./g, ''),
-        old_price: formData.old_price.replace(/\./g, ''),
+        price: formData.price.replace(/\./g, ""),
+        old_price: formData.old_price.replace(/\./g, ""),
 
         img: finalImageString, // Giờ đây là chuỗi JSON chứa các đường link ngắn gọn
         category: formData.category,
@@ -515,7 +515,10 @@ export default function AddProductPage() {
                 placeholder="350.000"
                 value={formData.price}
                 onChange={(e) =>
-                  setFormData({ ...formData, price: formatPrice(e.target.value) })
+                  setFormData({
+                    ...formData,
+                    price: formatPrice(e.target.value),
+                  })
                 }
                 required
               />
@@ -530,7 +533,10 @@ export default function AddProductPage() {
                 placeholder="450.000"
                 value={formData.old_price}
                 onChange={(e) =>
-                  setFormData({ ...formData, old_price: formatPrice(e.target.value) })
+                  setFormData({
+                    ...formData,
+                    old_price: formatPrice(e.target.value),
+                  })
                 }
               />
             </div>

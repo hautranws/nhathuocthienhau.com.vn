@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { getSafeSupabaseUser, safeSupabaseSignOut, supabase } from "@/lib/supabaseClient";
 
 export default function AdminLayout({
   children,
@@ -17,9 +17,7 @@ export default function AdminLayout({
     const checkAdmin = async () => {
       try {
         // 1. Check if user is logged in
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const user = await getSafeSupabaseUser();
 
         if (!user) {
           router.push("/login?redirect=/admin");
@@ -74,7 +72,7 @@ export default function AdminLayout({
         <span className="font-bold text-blue-900">🛡️ TRANG QUẢN TRỊ VIÊN</span>
         <button
           onClick={async () => {
-            await supabase.auth.signOut();
+            await safeSupabaseSignOut();
             router.push("/admin");
           }}
           className="text-sm text-red-600 hover:text-red-800 font-medium"

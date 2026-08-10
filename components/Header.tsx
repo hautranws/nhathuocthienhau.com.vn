@@ -1,8 +1,13 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  getSafeSupabaseUser,
+  safeSupabaseSignOut,
+  supabase,
+} from "@/lib/supabaseClient";
 
 // Import Component con
 import { Icons } from "./icons";
@@ -17,18 +22,19 @@ import UserDropdown from "@/components/UserDropdown";
 import { THUOC_DATA } from "@/components/data";
 
 export default function Header() {
-  const { totalItems } = useCart();
+  const router = useRouter();
+  const { totalItems, cartHighlight } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [activeMegaTab, setActiveMegaTab] = useState("Vitamin");
+  const [openMobileGroup, setOpenMobileGroup] = useState<string | null>("TPCN");
+  const [mobileSearchTerm, setMobileSearchTerm] = useState("");
 
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        setUser(user);
+        const currentUser = await getSafeSupabaseUser();
+        setUser(currentUser);
       } catch (error) {
         console.warn("Supabase getUser failed in Header:", error);
         setUser(null);
@@ -39,9 +45,20 @@ export default function Header() {
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
+  const toggleMobileGroup = (groupId: string) => {
+    setOpenMobileGroup((current) => (current === groupId ? null : groupId));
+  };
+
+  const handleMobileSearch = () => {
+    const trimmed = mobileSearchTerm.trim();
+    if (!trimmed) return;
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+    setIsMobileMenuOpen(false);
+  };
+
   // Hàm này giữ lại để dùng cho Mobile Menu (Menu điện thoại)
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await safeSupabaseSignOut();
     setUser(null);
     window.location.reload();
   };
@@ -147,39 +164,39 @@ export default function Header() {
       />
 
       {/* --- TẦNG 1: LOGO & TÌM KIẾM (Nền trắng) --- */}
-      <div className="container mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4 relative z-50 bg-white">
+      <div className="container mx-auto px-3 py-3 md:px-4 md:py-4 flex flex-wrap md:flex-nowrap justify-between items-center gap-3 md:gap-4 relative z-50 bg-white">
         <button
           onClick={toggleMenu}
-          className="md:hidden text-2xl p-2 focus:outline-none text-blue-700"
+          className="md:hidden text-2xl p-2 focus:outline-none text-blue-700 shrink-0"
         >
           {isMobileMenuOpen ? "✕" : "☰"}
         </button>
 
         {/* LOGO */}
-        <div className="flex-none flex items-center mr-4">
+        <div className="flex-none flex items-center mr-2 md:mr-4 min-w-0">
           <Link href="/" className="flex items-center gap-3 cursor-pointer">
             <img
               src="/logo-thien-hau.png"
               alt="Nhà Thuốc Thiên Hậu"
-              className="h-28 md:h-44 w-auto object-contain p-2"
+              className="h-20 sm:h-24 md:h-44 w-auto object-contain p-0 md:p-2"
             />
           </Link>
         </div>
 
         {/* SEARCH BAR */}
-        <div className="flex-1 max-w-2xl">
+        <div className="hidden md:block flex-1 max-w-2xl">
           <SearchBar />
         </div>
 
         {/* USER INFO & CART */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2 md:gap-6">
           {user ? (
             // 👇 THAY ĐỔI Ở ĐÂY: SỬ DỤNG COMPONENT MỚI
             <UserDropdown user={user} />
           ) : (
             <Link
               href="/login"
-              className="flex items-center gap-2 bg-red-600 text-white px-4 py-3 rounded-full hover:bg-red-700 transition shadow-lg hover:shadow-xl"
+              className="flex items-center gap-2 bg-red-600 text-white px-3 py-2 md:px-4 md:py-3 rounded-full hover:bg-red-700 transition shadow-lg hover:shadow-xl"
             >
               <span className="text-xl">👤</span>
               <span className="font-bold hidden md:block">Đăng nhập</span>
@@ -188,7 +205,11 @@ export default function Header() {
 
           <Link
             href="/checkout"
-            className="flex items-center gap-2 bg-blue-700 text-white px-4 py-3 rounded-full hover:bg-blue-800 transition relative shadow-lg hover:shadow-xl"
+            className={`flex items-center gap-2 bg-blue-700 text-white px-3 py-2 md:px-4 md:py-3 rounded-full hover:bg-blue-800 transition relative shadow-lg hover:shadow-xl ${
+              cartHighlight
+                ? "ring-4 ring-red-500/80 ring-offset-2 ring-offset-white animate-pulse"
+                : ""
+            }`}
           >
             <span className="text-xl">🛒</span>
             <span className="font-bold hidden md:block">Giỏ hàng</span>
@@ -198,6 +219,29 @@ export default function Header() {
               </span>
             )}
           </Link>
+        </div>
+
+        <div className="md:hidden w-full px-1 -mt-1">
+          <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 shadow-sm">
+            <span className="text-blue-600 text-base shrink-0">🔍</span>
+            <input
+              type="text"
+              value={mobileSearchTerm}
+              onChange={(e) => setMobileSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleMobileSearch();
+              }}
+              placeholder="Tìm thuốc, sản phẩm..."
+              className="w-full bg-transparent outline-none text-sm text-gray-800 placeholder:text-gray-500"
+            />
+            <button
+              type="button"
+              onClick={handleMobileSearch}
+              className="shrink-0 rounded-full bg-blue-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm"
+            >
+              Tìm
+            </button>
+          </div>
         </div>
       </div>
 
@@ -583,46 +627,134 @@ export default function Header() {
       {isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/50" onClick={toggleMenu}></div>
-          <div className="relative bg-white w-3/4 max-w-xs h-full shadow-xl flex flex-col animate-slide-in">
-            <div className="p-4 bg-blue-700 text-white flex justify-between items-center">
-              <span className="font-bold text-lg">DANH MỤC</span>
+          <div className="relative bg-white w-[88%] max-w-sm h-full shadow-xl flex flex-col animate-slide-in">
+            <div className="p-4 bg-gradient-to-r from-blue-700 to-blue-600 text-white flex justify-between items-center">
+              <span className="font-bold text-lg">MENU</span>
               <button onClick={toggleMenu} className="text-2xl">
                 ✕
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto py-4 text-gray-800 font-medium">
-              {NAV_ITEMS.map((item) => (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className="block px-6 py-3 hover:bg-gray-100 border-b"
-                  onClick={toggleMenu}
-                >
-                  {item.label}
-                </Link>
-              ))}
-
-              {/* Thêm link vào Mobile Menu luôn cho đồng bộ */}
+            <div className="flex-1 overflow-y-auto py-3 text-gray-800 font-medium">
               <Link
-                href="/he-thong-nha-thuoc"
-                className="block px-6 py-3 hover:bg-gray-100 border-b"
+                href="/"
+                className="flex items-center justify-between px-4 py-3 mx-3 mb-2 rounded-xl bg-blue-50 text-blue-700 font-bold border border-blue-100"
                 onClick={toggleMenu}
               >
-                HỆ THỐNG NHÀ THUỐC
+                <span className="flex items-center gap-3">
+                  <span className="text-lg">🏠</span>
+                  Trang chủ
+                </span>
+                <span className="text-sm">›</span>
               </Link>
+
+              <div className="px-3 space-y-2">
+                {NAV_ITEMS.map((item) => {
+                  const isOpen = openMobileGroup === item.id;
+                  const hasChildren = item.type === "dynamic" && item.data;
+                  const groupEntries = hasChildren
+                    ? Object.entries(item.data).slice(0, 5)
+                    : [];
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-2xl border border-gray-200 overflow-hidden bg-white"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          hasChildren
+                            ? toggleMobileGroup(item.id)
+                            : toggleMenu()
+                        }
+                        className="w-full flex items-center justify-between px-4 py-3 text-left font-semibold hover:bg-gray-50"
+                      >
+                        <span>{item.label}</span>
+                        {hasChildren ? (
+                          <span
+                            className={`text-gray-500 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                          >
+                            ›
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">›</span>
+                        )}
+                      </button>
+
+                      {isOpen && hasChildren && (
+                        <div className="border-t bg-gray-50 p-2 space-y-1">
+                          <Link
+                            href={item.href}
+                            className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm font-semibold text-blue-700"
+                            onClick={toggleMenu}
+                          >
+                            Xem tất cả {item.label}
+                            <span>›</span>
+                          </Link>
+
+                          {groupEntries.map(([key, group]: any) => (
+                            <Link
+                              key={key}
+                              href={`${item.href}?group=${key}`}
+                              className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm hover:bg-blue-50"
+                              onClick={toggleMenu}
+                            >
+                              <span className="flex items-center gap-2 min-w-0">
+                                <span className="text-base">
+                                  {(Icons as any)[key] || group.icon || "📦"}
+                                </span>
+                                <span className="truncate">{group.title}</span>
+                              </span>
+                              <span className="text-gray-400">›</span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+
+                      {!hasChildren && item.id === "THUOC" && (
+                        <div className="border-t bg-gray-50 p-2 space-y-1">
+                          <Link
+                            href="/category/Thuốc?group=NhomTriLieu"
+                            className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm"
+                            onClick={toggleMenu}
+                          >
+                            Nhóm trị liệu <span>›</span>
+                          </Link>
+                          <Link
+                            href="/tra-cuu-thuoc"
+                            className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm"
+                            onClick={toggleMenu}
+                          >
+                            Tra cứu thuốc <span>›</span>
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                <Link
+                  href="/he-thong-nha-thuoc"
+                  className="flex items-center justify-between px-4 py-3 rounded-2xl border border-gray-200 bg-white"
+                  onClick={toggleMenu}
+                >
+                  <span>HỆ THỐNG NHÀ THUỐC</span>
+                  <span className="text-gray-400">›</span>
+                </Link>
+              </div>
 
               <div className="mt-4 px-6">
                 {user ? (
                   <button
                     onClick={handleLogout}
-                    className="w-full bg-gray-500 text-white py-2 rounded-lg mb-2"
+                    className="w-full bg-gray-700 text-white py-3 rounded-2xl mb-2 font-semibold"
                   >
                     Đăng xuất
                   </button>
                 ) : (
                   <Link
                     href="/login"
-                    className="block w-full bg-red-600 text-white py-2 rounded-lg mb-2 text-center font-bold"
+                    className="block w-full bg-red-600 text-white py-3 rounded-2xl mb-2 text-center font-bold shadow-md"
                     onClick={toggleMenu}
                   >
                     Đăng nhập
