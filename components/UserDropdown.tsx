@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import Link from "next/link";
 import { safeSupabaseSignOut } from "@/lib/supabaseClient";
 import { 
@@ -12,13 +13,14 @@ import {
 } from "lucide-react";
 
 interface UserDropdownProps {
-  user: any; // Thông tin user từ Header truyền vào
+  user: SupabaseUser;
 }
 
 export default function UserDropdown({ user }: UserDropdownProps) {
   // Lấy tên hiển thị (Ưu tiên tên, nếu không có thì lấy SĐT/Email)
   const displayName = 
     user.user_metadata?.full_name || 
+    user.user_metadata?.display_name ||
     user.phone || 
     user.email?.split("@")[0] || 
     "Khách hàng";

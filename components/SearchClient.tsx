@@ -17,6 +17,8 @@ interface Product {
   unit?: string;
   specification?: string;
   conversion_units?: string | any;
+  quantity?: number | string;
+  is_out_of_stock?: boolean;
 }
 
 const getThumbnail = (imgData: string) => {
@@ -32,6 +34,7 @@ const getThumbnail = (imgData: string) => {
 const ProductItem = ({ product }: { product: Product }) => {
   const { addToCart } = useCart();
   const isRx = product.category === "Thuốc" && product.is_prescription;
+  const isOutOfStock = product.is_out_of_stock === true;
 
   // --- LOGIC QUY ĐỔI ĐƠN VỊ ---
   const [selectedUnit, setSelectedUnit] = React.useState<any>(null);
@@ -92,6 +95,13 @@ const ProductItem = ({ product }: { product: Product }) => {
           ) : (
             <span className="text-4xl">📦</span>
           )}
+          {isOutOfStock && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-700/60">
+              <span className="rounded-full bg-gray-900/85 px-3 py-1.5 text-xs font-bold text-white">
+                Hết hàng
+              </span>
+            </div>
+          )}
         </div>
       </Link>
 
@@ -146,7 +156,16 @@ const ProductItem = ({ product }: { product: Product }) => {
           </div>
         )}
 
-        {isRx ? (
+        {isOutOfStock ? (
+          <a
+            href="https://zalo.me/0988991837"
+            target="_blank"
+            rel="noreferrer"
+            className="w-full rounded-full border border-blue-200 bg-blue-50 py-2 text-center text-xs font-bold text-blue-700"
+          >
+            Tư vấn sản phẩm tương tự
+          </a>
+        ) : isRx ? (
           <a
             href="https://zalo.me/0988991837"
             target="_blank"

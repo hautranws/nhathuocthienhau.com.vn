@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { decodeTwilioSession, TWILIO_SESSION_COOKIE } from "@/lib/twilio-auth";
 
 export async function middleware(request: NextRequest) {
   // Chỉ bảo vệ /admin routes
@@ -9,7 +10,15 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    let response = NextResponse.next();
+    const twilioSession = decodeTwilioSession(
+      request.cookies.get(TWILIO_SESSION_COOKIE)?.value,
+    );
+
+    if (twilioSession?.userId) {
+      return NextResponse.next();
+    }
+
+    const response = NextResponse.next();
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

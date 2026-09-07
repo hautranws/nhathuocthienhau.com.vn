@@ -21,7 +21,7 @@ export default async function ProductDetail(props: {
     const { data, error: queryError } = await supabase
       .from("products")
       .select(
-        "id, title, category, sub_category, brand, flash_sale_start, flash_sale_end, is_flash_sale, is_prescription, price, old_price, flash_sale_price, discount, unit, specification, origin, manufacturer, expiry, indications, contraindications, description, img, ingredients, registration_no, dosage_form, sku, conversion_units",
+        "*",
       )
       .eq("id", id)
       .single();
@@ -64,6 +64,20 @@ export default async function ProductDetail(props: {
     : 0;
   const isFlashSaleActive = product.is_flash_sale && now >= start && now <= end;
   const isRx = product.category === "Thuốc" && product.is_prescription;
+  const isOutOfStock = product.is_out_of_stock === true;
+
+  const { data: replacementCandidates } = await supabase
+    .from("products")
+    .select("*")
+    .eq("category", product.category)
+    .neq("id", product.id)
+    .limit(12);
+  const replacementProducts = (replacementCandidates || [])
+    .filter(
+      (replacement) =>
+        replacement.is_out_of_stock !== true,
+    )
+    .slice(0, 4);
 
   // --- XỬ LÝ LOGIC ALBUM ẢNH ---
   let productImages: string[] = [];
@@ -106,6 +120,7 @@ export default async function ProductDetail(props: {
             <ProductGallery
               mainImage={productImages[0]}
               gallery={productImages.slice(1)}
+              isOutOfStock={isOutOfStock}
             />
           </div>
 
@@ -158,6 +173,8 @@ export default async function ProductDetail(props: {
               product={product}
               isRx={isRx}
               isFlashSaleActive={isFlashSaleActive}
+              isOutOfStock={isOutOfStock}
+              replacementProducts={replacementProducts || []}
             />
 
             {/* Thông tin tóm tắt */}

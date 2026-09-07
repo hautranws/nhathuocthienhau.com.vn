@@ -15,7 +15,7 @@ async function getProducts() {
   const { data, error } = await supabaseAdmin
     .from("products")
     .select(
-      "id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price, category, is_prescription, is_homepage_visible, specification, conversion_units",
+      "*",
     )
     .eq("is_homepage_visible", true)
     .order("id", { ascending: false });
@@ -38,7 +38,7 @@ async function getProducts() {
   const { data: defaultData, error: defaultError } = await supabaseAdmin
     .from("products")
     .select(
-      "id, title, price, old_price, img, unit, is_best_seller, is_flash_sale, flash_sale_price, category, is_prescription, is_homepage_visible",
+      "*",
     )
     .order("id", { ascending: false })
     .limit(20);
@@ -55,7 +55,7 @@ async function getProducts() {
 async function getBestSellers() {
   const { data, error } = await supabaseAdmin
     .from("products")
-    .select("id, title, price, old_price, img, category, is_prescription")
+    .select("*")
     .eq("is_best_seller", true)
     .limit(10);
   return { data, error };

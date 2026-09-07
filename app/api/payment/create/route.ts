@@ -145,10 +145,18 @@ export async function POST(req: Request) {
     const finalNote = [
       note,
       mapLocation ? `Bản đồ: ${mapLocation}` : null,
-      shippingMode ? `Phương thức ship: ${shippingMode === "express" ? "Giao trong ngày" : "Giao tiêu chuẩn"}` : null,
-      typeof isFreeShip === "boolean" ? `Freeship: ${isFreeShip ? "Có" : "Không"}` : null,
-      typeof shippingFee === "number" ? `Phí ship: ${shippingFee.toLocaleString("vi-VN")}đ` : null,
-    ].filter(Boolean).join(" | ");
+      shippingMode
+        ? `Phương thức ship: ${shippingMode === "express" ? "Giao trong ngày" : "Giao tiêu chuẩn"}`
+        : null,
+      typeof isFreeShip === "boolean"
+        ? `Freeship: ${isFreeShip ? "Có" : "Không"}`
+        : null,
+      typeof shippingFee === "number"
+        ? `Phí ship: ${shippingFee.toLocaleString("vi-VN")}đ`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
 
     // --- BƯỚC 2: TẠO ĐƠN HÀNG VÀO DB (GIỮ NGUYÊN) ---
     const { data: orderData, error: orderError } = await supabaseAdmin

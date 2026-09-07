@@ -1,20 +1,72 @@
 "use client";
-import React, { useState } from "react";
+import React, { Suspense, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { normalizeVietnamPhone } from "@/lib/twilio-auth";
 
-const ADMIN_EMAIL = "tranthienhaudau2@gmail.com";
-const ADMIN_PHONE_CORE = "989217112"; // 9 số cuối của SĐT Admin
+function OtpBoxes({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const digits = Array.from({ length: 6 }, (_, index) => value[index] ?? "");
 
-const isAdminUser = (user: any) => {
-  if (!user) return false;
-  const cleanPhone = user.phone ? user.phone.replace(/[^0-9]/g, "") : "";
-  return user.email === ADMIN_EMAIL || cleanPhone.includes(ADMIN_PHONE_CORE);
-};
+  const updateDigit = (index: number, input: string) => {
+    const digit = input.replace(/\D/g, "").slice(-1);
+    const nextDigits = [...digits];
+    nextDigits[index] = digit;
+    onChange(nextDigits.join(""));
+    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
+  };
 
-export default function LoginPage() {
+  return (
+    <div
+      className="flex justify-center gap-2"
+      onPaste={(event) => {
+        const pasted = event.clipboardData
+          .getData("text")
+          .replace(/\D/g, "")
+          .slice(0, 6);
+        if (!pasted) return;
+        event.preventDefault();
+        onChange(pasted);
+        inputRefs.current[Math.min(pasted.length, 5)]?.focus();
+      }}
+    >
+      {digits.map((digit, index) => (
+        <input
+          key={index}
+          ref={(element) => {
+            inputRefs.current[index] = element;
+          }}
+          type="text"
+          inputMode="numeric"
+          autoComplete={index === 0 ? "one-time-code" : "off"}
+          maxLength={1}
+          value={digit}
+          onChange={(event) => updateDigit(index, event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Backspace" && !digit && index > 0) {
+              inputRefs.current[index - 1]?.focus();
+            }
+          }}
+          className="h-12 w-11 rounded-xl border-2 border-gray-200 text-center text-xl font-bold text-gray-800 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+          aria-label={`Số OTP thứ ${index + 1}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") ?? "/";
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -23,34 +75,136 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [pin, setPin] = useState("");
+  const [requiresPin, setRequiresPin] = useState(false);
+  const [needsPinSetup, setNeedsPinSetup] = useState(false);
+  const [isForgotPin, setIsForgotPin] = useState(false);
 
   // State cho Email
   const [isEmailMode, setIsEmailMode] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // --- GỬI OTP QUA SMS ---
-  const handleSendOtp = async (e: React.FormEvent) => {
+  // --- KIỂM TRA SỐ ĐIỆN THOẠI ---
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone) return setMessage("❌ Vui lòng nhập số điện thoại");
     setLoading(true);
     setMessage("");
 
-    let formattedPhone = phone.trim();
-    if (formattedPhone.startsWith("0")) {
-      formattedPhone = "+84" + formattedPhone.substring(1);
-    }
+    const formattedPhone = normalizeVietnamPhone(phone);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
+      if (isForgotPin) {
+        const response = await fetch("/api/auth/twilio/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: formattedPhone }),
+        });
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || "Không gửi được mã OTP.");
+        }
+
+        setOtpSent(true);
+        setMessage("✅ Đã gửi mã OTP Twilio để đặt lại mã PIN.");
+        return;
+      }
+
+      const checkResponse = await fetch("/api/auth/twilio/check-phone", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone: formattedPhone }),
       });
-      if (error) throw error;
+      const checkResult = await checkResponse.json();
+
+      if (!checkResponse.ok || !checkResult.success) {
+        throw new Error(checkResult.error || "Không thể kiểm tra tài khoản.");
+      }
+
+      if (checkResult.hasPin) {
+        setRequiresPin(true);
+        setMessage("✅ Số điện thoại đã có tài khoản. Vui lòng nhập mã PIN 6 số.");
+        return;
+      }
+
+      const response = await fetch("/api/auth/twilio/send-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone: formattedPhone }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Không gửi được mã OTP.");
+      }
 
       setOtpSent(true);
-      setMessage("");
-    } catch (error: any) {
-      setMessage(`❌ Lỗi gửi mã: ${error.message}`);
+      setMessage("✅ Đã gửi mã OTP qua Twilio SMS.");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Không gửi được mã OTP.";
+      setMessage(`❌ Lỗi gửi mã: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePinLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/auth/twilio/login-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, pin }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Mã PIN không đúng.");
+      }
+
+      window.location.assign(result.redirectTo ?? redirectTo);
+    } catch (error: unknown) {
+      setMessage(`❌ ${error instanceof Error ? error.message : "Mã PIN không đúng."}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(pin)) {
+      return setMessage("❌ Mã PIN phải gồm đúng 6 chữ số.");
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/auth/twilio/set-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Không thể lưu mã PIN.");
+      }
+
+      window.location.assign(result.redirectTo ?? redirectTo);
+    } catch (error: unknown) {
+      setMessage(`❌ ${error instanceof Error ? error.message : "Không thể lưu mã PIN."}`);
     } finally {
       setLoading(false);
     }
@@ -61,32 +215,41 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    let formattedPhone = phone.trim();
-    if (formattedPhone.startsWith("0")) {
-      formattedPhone = "+84" + formattedPhone.substring(1);
-    }
+    const formattedPhone = normalizeVietnamPhone(phone);
 
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: formattedPhone,
-        token: otp,
-        type: "sms",
+      const response = await fetch("/api/auth/twilio/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          otp,
+          resetPin: isForgotPin,
+        }),
       });
-      if (error) throw error;
 
-      if (data.user) {
-        // Check if user is admin in database
-        const { data: adminData } = await supabase
-          .from("admin_users")
-          .select("id")
-          .eq("user_id", data.user.id)
-          .eq("is_active", true)
-          .single();
+      const result = await response.json();
 
-        router.push(adminData ? "/admin" : "/");
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Mã OTP không đúng hoặc hết hạn.");
       }
-    } catch (error: any) {
-      setMessage(`❌ Mã OTP không đúng hoặc hết hạn.`);
+
+      if (result.requiresPin) {
+        setNeedsPinSetup(true);
+        setMessage(
+          isForgotPin
+            ? "✅ Đã xác minh số điện thoại. Hãy đặt mã PIN mới."
+            : "✅ Số điện thoại đã được xác minh. Hãy tạo mã PIN 6 số.",
+        );
+      } else {
+        window.location.assign(result.redirectTo ?? redirectTo);
+      }
+    } catch (error: unknown) {
+      setMessage(
+        `❌ ${error instanceof Error ? error.message : "Lỗi xác thực OTP."}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -120,7 +283,7 @@ export default function LoginPage() {
 
         router.push(adminData ? "/admin" : "/");
       }
-    } catch (error: any) {
+    } catch {
       setMessage(`❌ Đăng nhập thất bại: Sai email hoặc mật khẩu.`);
     } finally {
       setLoading(false);
@@ -226,9 +389,83 @@ export default function LoginPage() {
               </button>
             </div>
           </form>
-        ) : // FORM SỐ ĐIỆN THOẠI (CŨ)
-        !otpSent ? (
-          <form onSubmit={handleSendOtp} className="space-y-4">
+        ) : needsPinSetup ? (
+          <form onSubmit={handleSetPin} className="space-y-4">
+            <p className="text-center text-sm text-gray-600">
+              Tạo mã PIN 6 số để lần sau đăng nhập nhanh hơn.
+            </p>
+            <input
+              type="password"
+              inputMode="numeric"
+              required
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="Tạo mã PIN (6 số)"
+              maxLength={6}
+              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-center text-xl tracking-widest font-bold"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-full hover:bg-blue-700 transition shadow-lg disabled:bg-gray-400"
+            >
+              {loading ? "Đang lưu..." : "Lưu mã PIN"}
+            </button>
+          </form>
+        ) : requiresPin ? (
+          <form onSubmit={handlePinLogin} className="space-y-4">
+            <p className="text-center text-sm text-gray-600">
+              Nhập mã PIN 6 số của bạn để tiếp tục.
+            </p>
+            <input
+              type="password"
+              inputMode="numeric"
+              required
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="Mã PIN (6 số)"
+              maxLength={6}
+              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-center text-xl tracking-widest font-bold"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-full hover:bg-blue-700 transition shadow-lg disabled:bg-gray-400"
+            >
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsForgotPin(true);
+                setRequiresPin(false);
+                setOtpSent(false);
+                setOtp("");
+                setPin("");
+                setMessage("Nhập số điện thoại để nhận OTP đặt lại mã PIN.");
+              }}
+              className="w-full text-sm font-medium text-blue-600 hover:underline"
+            >
+              Quên mã PIN?
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRequiresPin(false);
+                setPin("");
+              }}
+              className="w-full text-sm text-blue-600 hover:underline"
+            >
+              Dùng số điện thoại khác
+            </button>
+          </form>
+        ) : !otpSent ? (
+          <form onSubmit={handlePhoneSubmit} className="space-y-4">
+            {isForgotPin && (
+              <p className="text-center text-sm font-medium text-blue-700">
+                Đặt lại mã PIN bằng OTP Twilio
+              </p>
+            )}
             <input
               type="tel"
               required
@@ -261,15 +498,8 @@ export default function LoginPage() {
                 Đổi số điện thoại
               </button>
             </div>
-            <input
-              type="text"
-              required
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              placeholder="Nhập mã OTP (6 số)"
-              maxLength={6}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-center text-xl tracking-widest font-bold"
-            />
+            <OtpBoxes value={otp} onChange={setOtp} />
+            <p className="text-center text-xs text-gray-500">Nhập mã OTP 6 số đã nhận qua SMS</p>
             <button
               type="submit"
               disabled={loading}
@@ -298,5 +528,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center text-gray-500">
+          Đang tải...
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

@@ -19,7 +19,7 @@ export default async function SearchPage({
       supabase
         .from("products")
         .select(
-          "id, title, price, old_price, img, discount, category, is_prescription, unit, specification, conversion_units",
+          "*",
         );
 
     if (words.length <= 1) {

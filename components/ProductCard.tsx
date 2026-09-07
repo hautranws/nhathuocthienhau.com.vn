@@ -3,6 +3,16 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image"; // Thêm thư viện Image tối ưu của Next.js
 import { useCart } from "@/context/CartContext";
+import { formatPrice, parsePrice } from "@/lib/format-price";
+
+interface ConversionUnit {
+  unit_name: string;
+  price: number | string;
+  quantity?: number | string;
+  old_price?: number | string;
+  sku?: string;
+  is_base?: boolean;
+}
 
 interface ProductProps {
   product: {
@@ -14,41 +24,56 @@ interface ProductProps {
     specification?: string;
     category?: string;
     is_prescription?: boolean;
-    conversion_units?: any;
+    conversion_units?: string | ConversionUnit[];
     sku?: string;
+    quantity?: number | string;
+    is_out_of_stock?: boolean;
   };
 }
 
 const ProductCard: React.FC<ProductProps> = ({ product }) => {
   const { addToCart } = useCart();
   const isRx = product.category === "Thuốc" && product.is_prescription;
+  const isOutOfStock = product.is_out_of_stock === true;
 
   // --- LOGIC QUY ĐỔI ĐƠN VỊ ---
-  const [selectedUnit, setSelectedUnit] = React.useState<any>(null);
+  const [selectedUnit, setSelectedUnit] =
+    React.useState<ConversionUnit | null>(null);
 
   const units = React.useMemo(() => {
-    let result = [];
-    // Thêm đơn vị gốc
-    result.push({
-      unit_name: product.unit || "Đơn vị",
-      price: product.price,
-      quantity: 1,
-      is_base: true,
-    });
+    const result = [
+      {
+        unit_name: product.unit || "Đơn vị",
+        price: product.price,
+        quantity: 1,
+        is_base: true,
+      },
+    ];
 
-    if (product.conversion_units) {
-      try {
-        const parsed =
-          typeof product.conversion_units === "string"
-            ? JSON.parse(product.conversion_units)
-            : product.conversion_units;
-        if (Array.isArray(parsed)) {
-          result = [...result, ...parsed];
-        }
-      } catch (e) {
-        console.error("Lỗi parse conversion_units:", e);
+    if (!product.conversion_units) return result;
+
+    try {
+      const parsed =
+        typeof product.conversion_units === "string"
+          ? JSON.parse(product.conversion_units)
+          : product.conversion_units;
+
+      if (Array.isArray(parsed)) {
+        const validConversions = parsed.filter(
+          (unit) =>
+            unit &&
+            typeof unit.unit_name === "string" &&
+            unit.unit_name.trim() &&
+            unit.price !== undefined &&
+            unit.price !== null &&
+            String(unit.price).trim(),
+        );
+        return [...result, ...validConversions];
       }
+    } catch (e) {
+      console.error("Lỗi parse conversion_units:", e);
     }
+
     return result;
   }, [product]);
 
@@ -91,6 +116,13 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
+          {isOutOfStock && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-700/60">
+              <span className="rounded-full bg-gray-900/85 px-3 py-1.5 text-xs font-bold text-white">
+                Hết hàng
+              </span>
+            </div>
+          )}
         </div>
       </Link>
 
@@ -108,10 +140,10 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
           <span className="text-gray-500 text-sm">Cần tư vấn từ dược sĩ</span>
         ) : (
           <>
-            {/* Bộ chọn đơn vị (nếu có multiple units) */}
+            {/* Chỉ hiện lựa chọn khi sản phẩm có đơn vị quy đổi hợp lệ */}
             {units.length > 1 && (
               <div className="flex flex-wrap gap-1 mb-2">
-                {units.map((u: any, idx: number) => (
+                {units.map((u, idx) => (
                   <button
                     key={idx}
                     onClick={(e) => {
@@ -132,7 +164,7 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
 
             <div className="flex items-end gap-1">
               <span className="text-blue-600 font-bold text-[17px] md:text-lg">
-                {Number(currentPrice).toLocaleString("vi-VN")}đ
+                {formatPrice(currentPrice)}đ
               </span>
               {currentUnitName && (
                 <span className="text-gray-500 text-[11px] mb-0.5">
@@ -154,7 +186,16 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
         )}
       </div>
 
-      {isRx ? (
+      {isOutOfStock ? (
+        <a
+          href="https://zalo.me/0988991837"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-auto w-full rounded-full border border-blue-200 bg-blue-50 py-2 text-center text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100"
+        >
+          Tư vấn sản phẩm tương tự
+        </a>
+      ) : isRx ? (
         <a
           href="https://zalo.me/0988991837"
           target="_blank"
@@ -174,7 +215,7 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
               ...product,
               id: product.id,
               title: product.title,
-              price: Number(currentPrice) || Number(product.price),
+              price: parsePrice(currentPrice) || parsePrice(product.price),
               unit: currentUnitName,
               sku: selectedUnit?.sku || product.sku,
             });

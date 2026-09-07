@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 export default function ProductGallery({
   mainImage,
   gallery = [],
+  isOutOfStock = false,
 }: {
   mainImage: string;
   gallery?: string[] | null;
+  isOutOfStock?: boolean;
 }) {
   const images = [mainImage, ...(gallery || [])].filter(Boolean);
   const [activeImage, setActiveImage] = useState(mainImage);
@@ -33,6 +35,14 @@ export default function ProductGallery({
           <div className="flex flex-col items-center justify-center text-gray-300">
             <span className="text-6xl mb-2">📦</span>
             <span className="text-sm">Đang tải ảnh...</span>
+          </div>
+        )}
+
+        {isOutOfStock && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-700/60">
+            <span className="rounded-full bg-gray-900/90 px-5 py-2 text-base font-bold text-white shadow-lg">
+              Hết hàng
+            </span>
           </div>
         )}
 

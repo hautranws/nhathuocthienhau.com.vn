@@ -3,6 +3,39 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import {
+  CSCN_DATA,
+  DMP_DATA,
+  TBYT_DATA,
+  THUOC_DATA,
+  TPCN_DATA,
+} from "@/components/data";
+
+const CATEGORY_OPTIONS = {
+  Thuốc: THUOC_DATA,
+  "Thực phẩm chức năng": TPCN_DATA,
+  "Dược mỹ phẩm": DMP_DATA,
+  "Chăm sóc cá nhân": CSCN_DATA,
+  "Thiết bị y tế": TBYT_DATA,
+};
+
+const getSubCategoryOptions = (category: string) => {
+  const items: { title: string }[] = [];
+  const groups = CATEGORY_OPTIONS[category as keyof typeof CATEGORY_OPTIONS];
+
+  if (!groups) return items;
+
+  Object.values(groups).forEach((group: any) => {
+    group.items?.forEach((item: any) => {
+      if (item.children?.length) items.push(...item.children);
+      else items.push(item);
+    });
+  });
+
+  return Array.from(
+    new Map(items.map((item) => [item.title, item])).values(),
+  );
+};
 
 // --- HÀM NÉN ẢNH ĐỂ TIẾT KIỆM DUNG LƯỢNG (DÙNG CANVAS) ---
 const compressImage = (file: File): Promise<File> => {
@@ -69,6 +102,7 @@ export default function EditProductPage() {
     price: "",
     old_price: "",
     category_id: "",
+    sub_category: [] as string[],
     description: "",
     sku: "",
     unit: "Viên",
@@ -127,7 +161,13 @@ export default function EditProductPage() {
           title: data.title || "",
           price: formatPrice(String(data.price || 0)),
           old_price: formatPrice(String(data.old_price || 0)),
-          category_id: data.category_id || "",
+          category_id: data.category_id || data.category || "",
+          sub_category: data.sub_category
+            ? String(data.sub_category)
+                .split(",")
+                .map((item: string) => item.trim())
+                .filter(Boolean)
+            : [],
           description: data.description || "",
           sku: data.sku || "",
           unit: data.unit || "Viên",
@@ -201,6 +241,15 @@ export default function EditProductPage() {
     setConversionUnits(conversionUnits.filter((_, i) => i !== index));
   };
 
+  const toggleSubCategory = (title: string) => {
+    setProduct((current) => ({
+      ...current,
+      sub_category: current.sub_category.includes(title)
+        ? current.sub_category.filter((item) => item !== title)
+        : [...current.sub_category, title],
+    }));
+  };
+
   // --- LƯU DỮ LIỆU ---
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,7 +290,9 @@ export default function EditProductPage() {
           price: Number(String(product.price).replace(/\./g, "")),
           old_price: Number(String(product.old_price).replace(/\./g, "")),
           img: JSON.stringify(finalImages), // Lưu dưới dạng mảng JSON string
+          category: product.category_id,
           category_id: product.category_id,
+          sub_category: product.sub_category.join(", "),
           description: product.description,
           sku: product.sku || null,
           unit: product.unit || "Viên",
@@ -570,16 +621,70 @@ export default function EditProductPage() {
           {/* Danh mục & Mô tả */}
           <div>
             <label className="block text-sm font-bold mb-1">
-              Mã Danh Mục (Category ID)
+              1. Chọn Danh Mục Lớn (*)
             </label>
-            <input
-              type="text"
+            <select
               className="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
               value={product.category_id}
               onChange={(e) =>
-                setProduct({ ...product, category_id: e.target.value })
+                setProduct({
+                  ...product,
+                  category_id: e.target.value,
+                  sub_category: [],
+                })
               }
-            />
+              required
+            >
+              <option value="">-- Chọn danh mục --</option>
+              <option value="Chưa phân loại">Chưa phân loại</option>
+              {Object.keys(CATEGORY_OPTIONS).map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              2. Chọn Loại Chi Tiết (Có thể chọn nhiều)
+              {product.sub_category.length > 0 && (
+                <span className="ml-2 text-green-600">
+                  ({product.sub_category.length} đã chọn)
+                </span>
+              )}
+            </label>
+            {!product.category_id ||
+            product.category_id === "Chưa phân loại" ? (
+              <div className="rounded border bg-gray-50 p-3 text-sm italic text-gray-400">
+                Vui lòng chọn Danh mục lớn trước...
+              </div>
+            ) : (
+              <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto rounded border bg-white p-2 md:grid-cols-3">
+                {getSubCategoryOptions(product.category_id).length > 0 ? (
+                  getSubCategoryOptions(product.category_id).map((item) => (
+                    <label
+                      key={item.title}
+                      className="flex cursor-pointer items-start space-x-2 rounded p-1 hover:bg-blue-50"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 rounded text-blue-600 focus:ring-blue-500"
+                        checked={product.sub_category.includes(item.title)}
+                        onChange={() => toggleSubCategory(item.title)}
+                      />
+                      <span className="text-sm leading-snug text-gray-700">
+                        {item.title}
+                      </span>
+                    </label>
+                  ))
+                ) : (
+                  <div className="col-span-3 text-sm text-gray-500">
+                    Chưa có dữ liệu cho mục này.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>

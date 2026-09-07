@@ -4,10 +4,18 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 // import Image from "next/image"; // Bật dòng này nếu muốn dùng Image tối ưu
 
-const ITEMS_PER_PAGE = 100; // Số lượng hiển thị mỗi trang
+const ITEMS_PER_PAGE = 10; // Số lượng hiển thị mỗi trang
+
+interface InventoryProduct {
+  id: number;
+  sku?: string;
+  title: string;
+  img?: string;
+  price: number | string;
+}
 
 export default function ProductManagementPage() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,13 +35,18 @@ export default function ProductManagementPage() {
     setDebugInfo("Đang kết nối...");
 
     try {
+      const normalizedSearch = searchTerm.trim();
+      const searchPattern = `%${normalizedSearch}%`;
+
       // 1. Lấy tổng số lượng để tính số trang (lọc theo search nếu có)
       let countQuery = supabase
         .from("products")
         .select("*", { count: "exact", head: true });
 
-      if (searchTerm.trim()) {
-        countQuery = countQuery.ilike("title", `%${searchTerm.trim()}%`);
+      if (normalizedSearch) {
+        countQuery = countQuery.or(
+          `title.ilike.${searchPattern},sku.ilike.${searchPattern}`,
+        );
       }
 
       const { count } = await countQuery;
@@ -51,8 +64,10 @@ export default function ProductManagementPage() {
         .order("id", { ascending: false })
         .range(from, to);
 
-      if (searchTerm.trim()) {
-        query = query.ilike("title", `%${searchTerm.trim()}%`);
+      if (normalizedSearch) {
+        query = query.or(
+          `title.ilike.${searchPattern},sku.ilike.${searchPattern}`,
+        );
       }
 
       const { data, error } = await query;
@@ -72,8 +87,9 @@ export default function ProductManagementPage() {
           setProducts(data);
         }
       }
-    } catch (err: any) {
-      setDebugInfo(`❌ Lỗi nghiêm trọng: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi không xác định";
+      setDebugInfo(`❌ Lỗi nghiêm trọng: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -98,7 +114,7 @@ export default function ProductManagementPage() {
         return parsed[0];
       }
       return imgData;
-    } catch (e) {
+    } catch {
       return imgData;
     }
   };
@@ -132,7 +148,7 @@ export default function ProductManagementPage() {
         <div className="bg-white p-3 rounded-xl shadow mb-6 flex gap-2">
           <input
             type="text"
-            placeholder="🔍 Tìm theo tên sản phẩm (toàn bộ kho)..."
+            placeholder="🔍 Tìm theo tên sản phẩm hoặc SKU..."
             className="flex-1 p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}

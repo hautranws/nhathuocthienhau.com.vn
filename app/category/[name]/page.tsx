@@ -118,7 +118,7 @@ export default async function CategoryPage(props: {
   let supabaseQuery = supabase
     .from("products")
     .select(
-      "id, title, price, img, unit, discount, old_price, category, sub_category, is_prescription",
+      "*",
     )
     .eq("category", categoryName); // Dùng .eq thay vì .ilike %...% để tránh timeout
 

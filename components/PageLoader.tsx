@@ -1,17 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import Image from "next/image";
 
 export default function PageLoader() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const query = searchParams.toString();
   const [loading, setLoading] = useState(false);
 
-  // Ẩn loader khi điều hướng hoàn tất (pathname đổi)
+  // Ẩn loader khi URL thay đổi, kể cả khi chỉ đổi query string.
   useEffect(() => {
-    setLoading(false);
-  }, [pathname]);
+    const resetTimer = window.setTimeout(() => setLoading(false), 0);
+    return () => window.clearTimeout(resetTimer);
+  }, [pathname, query]);
+
+  useEffect(() => {
+    if (!loading) return;
+
+    const fallbackTimer = window.setTimeout(() => setLoading(false), 8000);
+    return () => window.clearTimeout(fallbackTimer);
+  }, [loading]);
 
   // Hiện loader khi click vào link nội bộ
   useEffect(() => {
@@ -31,13 +41,15 @@ export default function PageLoader() {
     };
 
     document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
+    return () => {
+      document.removeEventListener("click", handleClick);
+    };
   }, []);
 
   if (!loading) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/70 backdrop-blur-sm transition-opacity duration-300">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-white/70 backdrop-blur-sm transition-opacity duration-300">
       <div className="flex flex-col items-center gap-3 bg-white rounded-2xl shadow-lg px-10 py-8">
         <Image
           src="/logo-thienhau-tab.png"

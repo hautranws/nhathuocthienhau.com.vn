@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { getSafeSupabaseUser, safeSupabaseSignOut, supabase } from "@/lib/supabaseClient";
+import { ADMIN_EMAIL } from "@/lib/twilio-auth";
 
 export default function AdminLayout({
   children,
@@ -9,7 +10,6 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
@@ -21,6 +21,11 @@ export default function AdminLayout({
 
         if (!user) {
           router.push("/login?redirect=/admin");
+          return;
+        }
+
+        if (user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+          router.push("/");
           return;
         }
 

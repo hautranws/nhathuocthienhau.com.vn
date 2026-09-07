@@ -204,6 +204,16 @@ export default function AdminDashboard() {
               Hiện ở trang giỏ hàng
             </p>
           </Link>
+
+          {/* 12. Cập nhật khách hàng */}
+          <Link
+            href="/admin/customers"
+            className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-md border-2 border-transparent hover:border-blue-500 hover:shadow-xl transition cursor-pointer group"
+          >
+            <div className="text-5xl mb-3 group-hover:scale-110 transition">👥</div>
+            <h3 className="text-xl font-bold text-blue-800 text-center">Cập nhật khách hàng</h3>
+            <p className="text-gray-500 text-xs mt-1 text-center">Nhập tên, SĐT và điểm từ Excel</p>
+          </Link>
         </div>
 
         {/* Quản lý sản phẩm trang chủ */}
