@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/supabaseClient";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  buildSearchOrFilter,
+  sortSearchResults,
+} from "@/lib/search-relevance";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,31 +16,9 @@ export async function GET(request: NextRequest) {
 
     let supabaseQuery = supabase.from("products").select("*");
 
-    // Tìm kiếm theo tên - logic đa từ: tách từng từ và yêu cầu tất cả đều có trong tên (AND)
+    // Lấy các ứng viên có ít nhất một từ khóa, sau đó xếp hạng theo độ liên quan.
     if (query) {
-      const words = query
-        .trim()
-        .split(/\s+/)
-        .filter((w) => w.length > 0);
-      if (words.length <= 1) {
-        // Tìm kiếm 1 từ: khớp nhiều cột để không bỏ sót gợi ý phổ biến
-        supabaseQuery = supabaseQuery.or(
-          [
-            `title.ilike.%${query}%`,
-            `category.ilike.%${query}%`,
-            `specification.ilike.%${query}%`,
-          ].join(","),
-        );
-      } else {
-        // Nhiều từ: ưu tiên OR theo nhiều cột để bắt được các từ viết rời
-        const orFilter = words
-          .map(
-            (word) =>
-              `title.ilike.%${word}%,category.ilike.%${word}%,specification.ilike.%${word}%`,
-          )
-          .join(",");
-        supabaseQuery = supabaseQuery.or(orFilter);
-      }
+      supabaseQuery = supabaseQuery.or(buildSearchOrFilter(query));
     }
 
     // Lọc theo danh mục
@@ -57,14 +39,16 @@ export async function GET(request: NextRequest) {
     //   supabaseQuery = supabaseQuery.eq("usage_type", usageType);
     // }
 
-    const { data, error } = await supabaseQuery.limit(100);
+    const { data, error } = await supabaseQuery.limit(500);
 
     if (error) {
       console.error("Search API error:", error);
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ products: data || [] });
+    return NextResponse.json({
+      products: sortSearchResults(data || [], query).slice(0, 100),
+    });
   } catch (err: any) {
     console.error("Search API exception:", err);
     return NextResponse.json(

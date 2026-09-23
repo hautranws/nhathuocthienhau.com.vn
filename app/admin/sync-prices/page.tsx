@@ -48,6 +48,9 @@ export default function SyncPricesPage() {
   const [editingSku, setEditingSku] = useState<Record<number, string>>({});
   const [savingSkuId, setSavingSkuId] = useState<number | null>(null);
   const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
+  const [resolvingRowKey, setResolvingRowKey] = useState<string | null>(null);
+  const [selectedMissingIds, setSelectedMissingIds] = useState<number[]>([]);
+  const [deletingSelected, setDeletingSelected] = useState(false);
   const [availabilityChoices, setAvailabilityChoices] = useState<
     Record<number, AvailabilityChoice | undefined>
   >({});
@@ -186,6 +189,9 @@ export default function SyncPricesPage() {
       setMissingProducts((current) =>
         current.filter((item) => item.id !== product.id),
       );
+      setSelectedMissingIds((current) =>
+        current.filter((id) => id !== product.id),
+      );
       setAvailabilityChoices((current) => {
         const next = { ...current };
         delete next[product.id];
@@ -203,6 +209,51 @@ export default function SyncPricesPage() {
       );
     } finally {
       setDeletingProductId(null);
+    }
+  };
+
+  const handleDeleteSelectedProducts = async () => {
+    if (selectedMissingIds.length === 0) return;
+
+    if (
+      !confirm(
+        `Bạn có chắc muốn xóa ${selectedMissingIds.length} sản phẩm đã chọn? Thao tác này không thể hoàn tác.`,
+      )
+    ) {
+      return;
+    }
+
+    setDeletingSelected(true);
+    try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .in("id", selectedMissingIds);
+
+      if (error) throw error;
+
+      const deletedIds = new Set(selectedMissingIds);
+      setMissingProducts((current) =>
+        current.filter((product) => !deletedIds.has(product.id)),
+      );
+      setAvailabilityChoices((current) => {
+        const next = { ...current };
+        selectedMissingIds.forEach((id) => delete next[id]);
+        return next;
+      });
+      setEditingSku((current) => {
+        const next = { ...current };
+        selectedMissingIds.forEach((id) => delete next[id]);
+        return next;
+      });
+      setSelectedMissingIds([]);
+      alert("Đã xóa các sản phẩm đã chọn.");
+    } catch (error: unknown) {
+      alert(
+        `Không thể xóa sản phẩm: ${error instanceof Error ? error.message : "Lỗi không xác định"}`,
+      );
+    } finally {
+      setDeletingSelected(false);
     }
   };
 
@@ -293,6 +344,79 @@ export default function SyncPricesPage() {
       );
     } finally {
       setDeletingProductId(null);
+    }
+  };
+
+  const handleResolveMissingSku = async (row: PreviewRow) => {
+    const rowKey = `${row.sku}-${row.fileTitle}`;
+    setResolvingRowKey(rowKey);
+
+    try {
+      const exactQuery = await supabase
+        .from("products")
+        .select("id, sku, title, price, category")
+        .eq("title", row.fileTitle)
+        .limit(2);
+
+      if (exactQuery.error) throw exactQuery.error;
+
+      let matches = exactQuery.data || [];
+      if (matches.length === 0) {
+        const partialQuery = await supabase
+          .from("products")
+          .select("id, sku, title, price, category")
+          .ilike("title", `%${row.fileTitle}%`)
+          .limit(2);
+
+        if (partialQuery.error) throw partialQuery.error;
+        matches = partialQuery.data || [];
+      }
+
+      if (matches.length === 0) {
+        alert("Không tìm thấy sản phẩm tương ứng theo tên trên website.");
+        return;
+      }
+
+      if (matches.length > 1) {
+        alert("Có nhiều sản phẩm trùng tên. Vui lòng sửa/tìm sản phẩm thủ công để tránh cập nhật nhầm.");
+        return;
+      }
+
+      const matchedProduct = matches[0] as ProductDB;
+      setPreviewData((current) =>
+        current.map((item) =>
+          item.sku === row.sku && item.fileTitle === row.fileTitle
+            ? {
+                ...item,
+                productId: matchedProduct.id,
+                productTitle: matchedProduct.title,
+                currentPrice: matchedProduct.price,
+                percentChange:
+                  parsePrice(matchedProduct.price) === 0
+                    ? null
+                    : ((parsePrice(item.newPrice) - parsePrice(matchedProduct.price)) /
+                        parsePrice(matchedProduct.price)) *
+                      100,
+                status:
+                  parsePrice(matchedProduct.price) === parsePrice(item.newPrice)
+                    ? "unchanged"
+                    : "changed",
+                message: "Đã tìm thấy sản phẩm theo tên",
+              }
+            : item,
+        ),
+      );
+      setEditingSku((current) => ({
+        ...current,
+        [matchedProduct.id]: row.sku,
+      }));
+      alert("Đã tìm thấy sản phẩm. Bạn có thể sửa SKU, xóa hoặc mở trang chỉnh sửa.");
+    } catch (error: unknown) {
+      alert(
+        `Không thể tìm sản phẩm: ${error instanceof Error ? error.message : "Lỗi không xác định"}`,
+      );
+    } finally {
+      setResolvingRowKey(null);
     }
   };
 
@@ -815,9 +939,19 @@ export default function SyncPricesPage() {
                 <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-600">
                   Không đổi giá: {unchangedCount}
                 </span>
-                <span className="rounded-full bg-red-50 px-3 py-1 text-red-600">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowFileOnly((current) => !current);
+                    setShowChangedOnly(false);
+                  }}
+                  className={`rounded-full px-3 py-1 text-red-600 transition hover:bg-red-100 ${
+                    showFileOnly ? "bg-red-200 font-bold" : "bg-red-50"
+                  }`}
+                  aria-pressed={showFileOnly}
+                >
                   ⚠️ Không tìm thấy SKU: {notFoundCount}
-                </span>
+                </button>
               </div>
             </div>
 
@@ -943,7 +1077,7 @@ export default function SyncPricesPage() {
                         )}
                       </td>
                       <td className="p-3 text-center whitespace-nowrap">
-                        {row.productId && (
+                        {row.productId ? (
                           <>
                             <button
                               type="button"
@@ -967,8 +1101,28 @@ export default function SyncPricesPage() {
                             >
                               {deletingProductId === row.productId ? "Đang xóa..." : "🗑️ Xóa"}
                             </button>
+                            <a
+                              href={`/admin/products/${row.productId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-1 inline-block rounded bg-yellow-500 px-2 py-1 text-xs font-bold text-white hover:bg-yellow-600"
+                              title="Mở trang sửa sản phẩm trong tab mới"
+                            >
+                              ✏️ Sửa
+                            </a>
                           </>
-                        )}
+                        ) : row.status === "not_found" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleResolveMissingSku(row)}
+                            disabled={resolvingRowKey === `${row.sku}-${row.fileTitle}`}
+                            className="rounded bg-orange-500 px-2 py-1 text-xs font-bold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-400"
+                          >
+                            {resolvingRowKey === `${row.sku}-${row.fileTitle}`
+                              ? "Đang tìm..."
+                              : "🔎 Tìm theo tên"}
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -1043,6 +1197,16 @@ export default function SyncPricesPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={handleDeleteSelectedProducts}
+                  disabled={selectedMissingIds.length === 0 || deletingSelected}
+                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                >
+                  {deletingSelected
+                    ? "Đang xóa..."
+                    : `🗑️ Xóa đã chọn (${selectedMissingIds.length})`}
+                </button>
+                <button
+                  type="button"
                   onClick={handleExportWebOnly}
                   className="rounded-lg border border-yellow-600 bg-white px-3 py-2 text-sm font-bold text-yellow-700 hover:bg-yellow-50"
                 >
@@ -1062,6 +1226,23 @@ export default function SyncPricesPage() {
               <table className="w-full text-left border-collapse text-sm">
                 <thead className="bg-yellow-100 text-yellow-800 uppercase font-bold sticky top-0 z-10">
                   <tr>
+                    <th className="p-3 border-b text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          missingProducts.length > 0 &&
+                          selectedMissingIds.length === missingProducts.length
+                        }
+                        onChange={(event) =>
+                          setSelectedMissingIds(
+                            event.target.checked
+                              ? missingProducts.map((product) => product.id)
+                              : [],
+                          )
+                        }
+                        aria-label="Chọn tất cả sản phẩm"
+                      />
+                    </th>
                     <th className="p-3 border-b">STT</th>
                     <th className="p-3 border-b">Mã SKU</th>
                     <th className="p-3 border-b min-w-[250px]">Tên sản phẩm</th>
@@ -1074,6 +1255,20 @@ export default function SyncPricesPage() {
                 <tbody className="divide-y divide-yellow-100">
                   {missingProducts.map((product, index) => (
                     <tr key={product.id} className="hover:bg-yellow-50">
+                      <td className="p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedMissingIds.includes(product.id)}
+                          onChange={(event) =>
+                            setSelectedMissingIds((current) =>
+                              event.target.checked
+                                ? [...current, product.id]
+                                : current.filter((id) => id !== product.id),
+                            )
+                          }
+                          aria-label={`Chọn ${product.title}`}
+                        />
+                      </td>
                       <td className="p-3 text-gray-500 font-mono">
                         {index + 1}
                       </td>

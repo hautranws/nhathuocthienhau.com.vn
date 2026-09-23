@@ -108,7 +108,7 @@ export default function ActivityLogPage() {
                     <tbody className="divide-y divide-gray-100">
                       {logs[date].map((product: any) => {
                         // Xử lý ảnh
-                        let imgUrl = "https://via.placeholder.com/50";
+                        let imgUrl = "/product-placeholder.svg";
                         try {
                             if (product.img) {
                                 if (product.img.startsWith("[")) {
@@ -128,7 +128,7 @@ export default function ActivityLogPage() {
                                 alt="img"
                                 className="w-10 h-10 object-cover rounded border bg-white"
                                 onError={(e) => {
-                                    (e.target as HTMLImageElement).src = "https://via.placeholder.com/50?text=No+Img";
+                                    (e.target as HTMLImageElement).src = "/product-placeholder.svg";
                                 }}
                               />
                             </td>

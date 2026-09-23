@@ -4,8 +4,6 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 // import Image from "next/image"; // Bật dòng này nếu muốn dùng Image tối ưu
 
-const ITEMS_PER_PAGE = 10; // Số lượng hiển thị mỗi trang
-
 interface InventoryProduct {
   id: number;
   sku?: string;
@@ -20,6 +18,8 @@ export default function ProductManagementPage() {
   const [debugInfo, setDebugInfo] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [sortOrder, setSortOrder] = useState("default");
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // --- State cho phân trang ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,7 +28,7 @@ export default function ProductManagementPage() {
   // Gọi hàm fetch mỗi khi đổi trang hoặc từ khóa tìm kiếm
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, sortOrder, itemsPerPage]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -38,30 +38,17 @@ export default function ProductManagementPage() {
       const normalizedSearch = searchTerm.trim();
       const searchPattern = `%${normalizedSearch}%`;
 
-      // 1. Lấy tổng số lượng để tính số trang (lọc theo search nếu có)
-      let countQuery = supabase
-        .from("products")
-        .select("*", { count: "exact", head: true });
+      // Tính toán phân đoạn
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
 
-      if (normalizedSearch) {
-        countQuery = countQuery.or(
-          `title.ilike.${searchPattern},sku.ilike.${searchPattern}`,
-        );
-      }
-
-      const { count } = await countQuery;
-
-      setTotalProducts(count || 0);
-
-      // 2. Tính toán phân đoạn
-      const from = (currentPage - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-
-      // 3. Lấy dữ liệu theo trang (có tìm kiếm nếu có từ khóa)
+      // Lấy dữ liệu và tổng số trên cùng một truy vấn để count không bị lệch.
       let query = supabase
         .from("products")
-        .select("*")
-        .order("id", { ascending: false })
+          .select("*", { count: "exact" })
+        .order(sortOrder === "name-asc" ? "title" : "id", {
+          ascending: sortOrder === "name-asc" ? true : false,
+        })
         .range(from, to);
 
       if (normalizedSearch) {
@@ -70,11 +57,12 @@ export default function ProductManagementPage() {
         );
       }
 
-      const { data, error } = await query;
+          const { data, error, count } = await query;
 
       if (error) {
         setDebugInfo(`❌ Lỗi: ${error.message}`);
       } else {
+        setTotalProducts(count ?? data?.length ?? 0);
         if (!data || data.length === 0) {
           setDebugInfo(
             "✅ Kết nối tốt, nhưng chưa có sản phẩm nào ở trang này.",
@@ -100,8 +88,13 @@ export default function ProductManagementPage() {
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) alert("Lỗi xóa: " + error.message);
     else {
-      alert("Đã xóa!");
-      fetchProducts();
+      setProducts((currentProducts) =>
+        currentProducts.filter((product) => product.id !== id),
+      );
+      setTotalProducts((currentTotal) => Math.max(0, currentTotal - 1));
+      setDebugInfo(
+        `✅ Đã xóa sản phẩm. Đang ở trang ${currentPage}, không tải lại danh sách.`,
+      );
     }
   };
 
@@ -121,7 +114,7 @@ export default function ProductManagementPage() {
   // ---------------------------------------------
 
   // Tính tổng số trang
-  const totalPages = Math.ceil(totalProducts / ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(totalProducts / itemsPerPage));
 
   return (
     <div className="min-h-screen bg-gray-100 p-8 font-sans">
@@ -145,7 +138,7 @@ export default function ProductManagementPage() {
         </div>
 
         {/* Thanh tìm kiếm */}
-        <div className="bg-white p-3 rounded-xl shadow mb-6 flex gap-2">
+        <div className="bg-white p-3 rounded-xl shadow mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <input
             type="text"
             placeholder="🔍 Tìm theo tên sản phẩm hoặc SKU..."
@@ -180,13 +173,43 @@ export default function ProductManagementPage() {
               ✕ Xóa
             </button>
           )}
+          <label className="flex items-center gap-2 text-sm text-gray-600 sm:ml-auto">
+            <span className="whitespace-nowrap">Sắp xếp:</span>
+            <select
+              value={sortOrder}
+              onChange={(event) => {
+                setSortOrder(event.target.value);
+                setCurrentPage(1);
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              aria-label="Sắp xếp sản phẩm"
+            >
+              <option value="default">Mới cập nhật</option>
+              <option value="name-asc">Tên A → Z</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="whitespace-nowrap">Hiển thị:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(event) => {
+                setItemsPerPage(Number(event.target.value));
+                setCurrentPage(1);
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              aria-label="Số sản phẩm mỗi trang"
+            >
+              <option value={10}>10 sản phẩm</option>
+              <option value={50}>50 sản phẩm</option>
+              <option value={100}>100 sản phẩm</option>
+            </select>
+          </label>
         </div>
 
         <div className="bg-white rounded-xl shadow overflow-hidden">
           <table className="w-full text-left">
             <thead className="bg-blue-50 text-blue-800 font-bold">
               <tr>
-                <th className="p-4">ID</th>
                 <th className="p-4">SKU</th>
                 <th className="p-4">Ảnh</th>
                 <th className="p-4">Tên sản phẩm</th>
@@ -210,7 +233,6 @@ export default function ProductManagementPage() {
               ) : (
                 products.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="p-4 text-gray-500">#{p.id}</td>
                     <td className="p-4 text-gray-700 font-mono text-sm">
                       {p.sku || "N/A"}
                     </td>
@@ -219,7 +241,7 @@ export default function ProductManagementPage() {
                         <img
                           src={getThumbnail(p.img)}
                           alt=""
-                          className="w-10 h-10 object-contain border rounded bg-white"
+                          className="w-14 h-14 object-contain border rounded bg-white"
                           loading="lazy"
                         />
                       ) : (
@@ -256,32 +278,34 @@ export default function ProductManagementPage() {
           </table>
 
           {/* --- [CODE MỚI] THANH PHÂN TRANG --- */}
-          {!loading && totalProducts > 0 && (
-            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
+          {!loading && (totalProducts > 0 || products.length > 0) && (
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-center sm:text-left">
                   <p className="text-sm text-gray-700">
                     Hiển thị{" "}
                     <span className="font-medium">
-                      {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                      {(currentPage - 1) * itemsPerPage + 1}
                     </span>{" "}
                     đến{" "}
                     <span className="font-medium">
-                      {Math.min(currentPage * ITEMS_PER_PAGE, totalProducts)}
+                      {Math.min(currentPage * itemsPerPage, totalProducts)}
                     </span>{" "}
                     trong <span className="font-medium">{totalProducts}</span>{" "}
                     kết quả
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center justify-center gap-2">
                   <button
                     onClick={() =>
                       setCurrentPage((prev) => Math.max(prev - 1, 1))
                     }
                     disabled={currentPage === 1}
+                    aria-label="Quay lại trang trước"
+                    title="Quay lại trang trước"
                     className={`px-3 py-1 border rounded ${currentPage === 1 ? "bg-gray-200 text-gray-400" : "bg-white hover:bg-gray-100"}`}
                   >
-                    Trước
+                    ← Quay lại
                   </button>
                   {/* Hiển thị số trang đơn giản */}
                   <span className="px-3 py-1 border bg-blue-50 text-blue-600 font-bold rounded">
@@ -292,9 +316,11 @@ export default function ProductManagementPage() {
                       setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                     }
                     disabled={currentPage === totalPages}
+                    aria-label="Sang trang tiếp theo"
+                    title="Sang trang tiếp theo"
                     className={`px-3 py-1 border rounded ${currentPage === totalPages ? "bg-gray-200 text-gray-400" : "bg-white hover:bg-gray-100"}`}
                   >
-                    Sau
+                    Tiếp theo →
                   </button>
                 </div>
               </div>

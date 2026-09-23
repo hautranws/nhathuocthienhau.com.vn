@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { TOP_SEARCHES } from "./constants";
+import {
+  buildSearchOrFilter,
+  sortSearchResults,
+} from "@/lib/search-relevance";
 
 export default function SearchBar() {
   const router = useRouter();
@@ -53,11 +57,6 @@ export default function SearchBar() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchTerm.length > 1) {
-        const words = searchTerm
-          .trim()
-          .split(/\s+/)
-          .filter((w) => w.length > 0);
-
         const buildSearchQuery = () =>
           supabase
             .from("products")
@@ -65,15 +64,10 @@ export default function SearchBar() {
               "id, title, price, img, old_price, category, specification, is_prescription",
             );
 
-        const orFilter = words
-          .map(
-            (word) =>
-              `title.ilike.%${word}%,category.ilike.%${word}%,specification.ilike.%${word}%`,
-          )
-          .join(",");
-
-        const { data } = await buildSearchQuery().or(orFilter).limit(5);
-        setSuggestions(data || []);
+        const { data } = await buildSearchQuery()
+          .or(buildSearchOrFilter(searchTerm))
+          .limit(50);
+        setSuggestions(sortSearchResults(data || [], searchTerm).slice(0, 5));
       } else {
         setSuggestions([]);
       }

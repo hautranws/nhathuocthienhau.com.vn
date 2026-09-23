@@ -69,12 +69,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Hàm thêm vào giỏ
   const addToCart = (product: any) => {
+    const quantityToAdd = Math.max(1, Number(product.quantity) || 1);
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
         return prev.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + quantityToAdd }
             : item,
         );
       }
@@ -85,7 +86,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           title: product.title || product.name || "Sản phẩm", // Lấy đúng tên
           price: Number(product.price),
           img: getCleanImage(product.img || product.image_url),
-          quantity: 1,
+          quantity: quantityToAdd,
         },
       ];
     });

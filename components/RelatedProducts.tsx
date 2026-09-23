@@ -30,7 +30,7 @@ export default async function RelatedProducts({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {products.map((product) => {
           const isRx = product.category === "Thuốc" && product.is_prescription;
-          let finalImg = "https://via.placeholder.com/150";
+          let finalImg = "/product-placeholder.svg";
           if (product.img) {
             try {
               finalImg = product.img.startsWith("[")

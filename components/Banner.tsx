@@ -83,7 +83,7 @@ export default function Banner() {
   return (
     <div
       className="w-full relative overflow-hidden rounded-2xl shadow-lg group"
-      style={{ aspectRatio: isMobile ? "16 / 9" : "1610 / 492" }}
+      style={{ aspectRatio: isMobile ? "4 / 3" : "1610 / 492" }}
     >
       {/* Hiển thị ảnh với Next.js Image (Optimized) */}
       <Image
@@ -92,8 +92,8 @@ export default function Banner() {
         fill
         priority={currentIndex === 0} // First slide priority
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
-        className="object-cover duration-700 transition-opacity ease-in-out"
-        quality={85}
+        className="object-contain bg-white duration-700 transition-opacity ease-in-out"
+        unoptimized
       />
 
       {/* Nút lùi (Mũi tên trái) */}

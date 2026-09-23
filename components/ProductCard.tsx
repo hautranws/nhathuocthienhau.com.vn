@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image"; // Thêm thư viện Image tối ưu của Next.js
 import { useCart } from "@/context/CartContext";
 import { formatPrice, parsePrice } from "@/lib/format-price";
@@ -33,6 +34,7 @@ interface ProductProps {
 
 const ProductCard: React.FC<ProductProps> = ({ product }) => {
   const { addToCart } = useCart();
+  const router = useRouter();
   const isRx = product.category === "Thuốc" && product.is_prescription;
   const isOutOfStock = product.is_out_of_stock === true;
 
@@ -89,7 +91,7 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
   const currentUnitName = selectedUnit ? selectedUnit.unit_name : product.unit;
 
   const getThumbnail = (imgData: string) => {
-    if (!imgData) return "https://via.placeholder.com/150";
+    if (!imgData) return "/product-placeholder.svg";
     try {
       const parsed = JSON.parse(imgData);
       return Array.isArray(parsed) ? parsed[0] : imgData;
@@ -114,7 +116,8 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
             alt={product.title}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            unoptimized
+            className="scale-105 object-cover transition-transform duration-300 group-hover:scale-110"
           />
           {isOutOfStock && (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-700/60">
@@ -211,14 +214,16 @@ const ProductCard: React.FC<ProductProps> = ({ product }) => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            addToCart({
+            const cartProduct = {
               ...product,
               id: product.id,
               title: product.title,
               price: parsePrice(currentPrice) || parsePrice(product.price),
               unit: currentUnitName,
               sku: selectedUnit?.sku || product.sku,
-            });
+            };
+            addToCart(cartProduct);
+            router.push("/checkout");
           }}
         >
           Chọn mua

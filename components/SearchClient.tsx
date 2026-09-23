@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import FilterSidebar from "./FilterSidebar";
 
@@ -22,7 +23,7 @@ interface Product {
 }
 
 const getThumbnail = (imgData: string) => {
-  if (!imgData) return "https://via.placeholder.com/150";
+  if (!imgData) return "/product-placeholder.svg";
   try {
     const parsed = JSON.parse(imgData);
     return Array.isArray(parsed) ? parsed[0] : imgData;
@@ -33,6 +34,7 @@ const getThumbnail = (imgData: string) => {
 
 const ProductItem = ({ product }: { product: Product }) => {
   const { addToCart } = useCart();
+  const router = useRouter();
   const isRx = product.category === "Thuốc" && product.is_prescription;
   const isOutOfStock = product.is_out_of_stock === true;
 
@@ -107,7 +109,7 @@ const ProductItem = ({ product }: { product: Product }) => {
 
       <div className="pt-3 flex flex-col flex-1">
         <Link href={`/product/${product.id}`} className="block mb-2">
-          <h3 className="font-bold text-gray-800 text-sm line-clamp-2 min-h-[40px] group-hover:text-blue-700 transition-colors">
+          <h3 className="font-bold text-gray-800 text-sm line-clamp-2 min-h-10 group-hover:text-blue-700 transition-colors">
             {product.title}
           </h3>
         </Link>
@@ -176,7 +178,7 @@ const ProductItem = ({ product }: { product: Product }) => {
         ) : (
           <button
             className="w-full bg-blue-600 text-white font-bold py-2 rounded-full text-xs text-center mt-auto active:scale-95 transition-transform"
-            onClick={() =>
+            onClick={() => {
               addToCart({
                 ...product,
                 id: product.id,
@@ -184,8 +186,9 @@ const ProductItem = ({ product }: { product: Product }) => {
                 price: currentPrice,
                 img: getThumbnail(product.img || ""),
                 unit: currentUnitName,
-              })
-            }
+              });
+              router.push("/checkout");
+            }}
           >
             Chọn mua
           </button>

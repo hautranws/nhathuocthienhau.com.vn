@@ -110,7 +110,7 @@ export default function StoresManagementPage() {
                 <tr key={store.id} className="hover:bg-gray-50 border-b last:border-0">
                   <td className="p-4 font-bold text-gray-500">#{store.id}</td>
                   <td className="p-4">
-                    <img src={store.image_url || "https://via.placeholder.com/100"} className="w-16 h-16 object-cover rounded border" alt="" />
+                    <img src={store.image_url || "/product-placeholder.svg"} className="w-16 h-16 object-cover rounded border" alt="" />
                   </td>
                   <td className="p-4">
                     <div className="font-bold text-blue-900">{store.name}</div>

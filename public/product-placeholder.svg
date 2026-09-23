@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="title">
+  <title id="title">Chua co hinh anh san pham</title>
+  <rect width="640" height="480" fill="#f1f5f9"/>
+  <rect x="180" y="110" width="280" height="220" rx="20" fill="#dbeafe"/>
+  <path d="M220 270l55-58 42 42 35-38 68 74H220z" fill="#2563eb" opacity=".75"/>
+  <circle cx="350" cy="175" r="24" fill="#f59e0b"/>
+  <text x="320" y="380" fill="#475569" font-family="Arial, sans-serif" font-size="24" text-anchor="middle">Chua co hinh anh</text>
+</svg>

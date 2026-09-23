@@ -542,16 +542,16 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
-                  <input required name="fullName" type="text" placeholder="Họ và tên" className="w-full border p-3 rounded-lg bg-gray-50" value={formValues.fullName || ""} onChange={(e) => setFormValues({...formValues, fullName: e.target.value})} />
-                  <input required name="phone" type="tel" placeholder="Số điện thoại" className="w-full border p-3 rounded-lg bg-gray-50" value={formValues.phone || ""} onChange={(e) => setFormValues({...formValues, phone: e.target.value})} />
+                  <input required name="fullName" type="text" placeholder="Họ và tên" className="checkout-field w-full border p-3 rounded-lg bg-gray-50" value={formValues.fullName || ""} onChange={(e) => setFormValues({...formValues, fullName: e.target.value})} />
+                  <input required name="phone" type="tel" placeholder="Số điện thoại" className="checkout-field w-full border p-3 rounded-lg bg-gray-50" value={formValues.phone || ""} onChange={(e) => setFormValues({...formValues, phone: e.target.value})} />
                 </div>
 
                 {deliveryMethod === 'home' && (
                     <div className="space-y-4 animate-fade-in border-t pt-4 mt-4">
                         {savedAddresses.length > 0 && (
                             <div className="mb-2">
-                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Sổ địa chỉ:</label>
-                                <select value={selectedAddressId || ""} onChange={handleAddressBookChange} className="w-full border p-2.5 rounded-lg text-sm bg-blue-50 border-blue-200 text-blue-800">
+                                <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">Sổ địa chỉ:</label>
+                                <select value={selectedAddressId || ""} onChange={handleAddressBookChange} className="checkout-field w-full border p-2.5 rounded-lg text-sm bg-blue-50 border-blue-200">
                                     {savedAddresses.map(a => <option key={a.id} value={a.id}>{a.name} - {a.full_address.substring(0,30)}...</option>)}
                                     <option value="new">+ Thêm địa chỉ mới</option>
                                 </select>
@@ -560,20 +560,20 @@ export default function CheckoutPage() {
 
                         {selectedAddressId === 'new' && (
                             <div className="space-y-3 bg-gray-50 p-3 rounded border">
-                                <p className="text-xs font-bold text-gray-500 uppercase">Địa chỉ nhận hàng mới:</p>
-                                <select className="w-full p-2 border rounded" value={addressData.city || ""} onChange={(e) => setAddressData({ ...addressData, city: e.target.value, district: "", ward: "" })}>
+                                <p className="text-xs font-bold text-gray-700 uppercase">Địa chỉ nhận hàng mới:</p>
+                                <select className="checkout-field w-full p-2 border rounded" value={addressData.city || ""} onChange={(e) => setAddressData({ ...addressData, city: e.target.value, district: "", ward: "" })}>
                                     <option value="">-- Chọn Tỉnh/Thành phố --</option>
                                     {cities.map((c: any) => <option key={c.code} value={`${c.code}|${c.name}`}>{c.name}</option>)}
                                 </select>
-                                <select className="w-full p-2 border rounded" value={addressData.district || ""} disabled={!addressData.city} onChange={(e) => setAddressData({ ...addressData, district: e.target.value, ward: "" })}>
+                                <select className="checkout-field w-full p-2 border rounded" value={addressData.district || ""} disabled={!addressData.city} onChange={(e) => setAddressData({ ...addressData, district: e.target.value, ward: "" })}>
                                     <option value="">-- Chọn Quận/Huyện --</option>
                                     {districts.map((d: any) => <option key={d.code} value={`${d.code}|${d.name}`}>{d.name}</option>)}
                                 </select>
-                                <select className="w-full p-2 border rounded" value={addressData.ward || ""} disabled={!addressData.district} onChange={(e) => setAddressData({ ...addressData, ward: e.target.value })}>
+                                <select className="checkout-field w-full p-2 border rounded" value={addressData.ward || ""} disabled={!addressData.district} onChange={(e) => setAddressData({ ...addressData, ward: e.target.value })}>
                                     <option value="">-- Chọn Phường/Xã --</option>
                                     {wards.map((w: any) => <option key={w.code} value={`${w.code}|${w.name}`}>{w.name}</option>)}
                                 </select>
-                                <input type="text" placeholder="Số nhà, tên đường cụ thể..." className="w-full p-2 border rounded" value={addressData.specific || ""} onChange={(e) => setAddressData({ ...addressData, specific: e.target.value })}/>
+                                <input type="text" placeholder="Số nhà, tên đường cụ thể..." className="checkout-field w-full p-2 border rounded" value={addressData.specific || ""} onChange={(e) => setAddressData({ ...addressData, specific: e.target.value })}/>
                             </div>
                         )}
 
@@ -623,7 +623,7 @@ export default function CheckoutPage() {
                     </div>
                 )}
 
-                <textarea name="note" rows={1} placeholder="Ghi chú đơn hàng (nếu có)" className="w-full border p-3 rounded-lg bg-gray-50 mt-4" value={formValues.note || ""} onChange={(e) => setFormValues({...formValues, note: e.target.value})}></textarea>
+                <textarea name="note" rows={1} placeholder="Ghi chú đơn hàng (nếu có)" className="checkout-field w-full border p-3 rounded-lg bg-gray-50 mt-4" value={formValues.note || ""} onChange={(e) => setFormValues({...formValues, note: e.target.value})}></textarea>
 
                 <div className="mt-6 border-t pt-4">
                   <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase">Phương thức thanh toán</h3>

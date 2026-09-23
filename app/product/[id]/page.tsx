@@ -94,7 +94,7 @@ export default async function ProductDetail(props: {
       productImages = [product.img];
     }
   } else {
-    productImages = ["https://via.placeholder.com/500?text=No+Image"];
+    productImages = ["/product-placeholder.svg"];
   }
 
   return (

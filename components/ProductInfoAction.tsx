@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { formatPrice, parsePrice } from "@/lib/format-price";
 
@@ -39,6 +40,7 @@ export default function ProductInfoAction({
   replacementProducts = [],
 }: ProductInfoActionProps) {
   const { addToCart } = useCart();
+  const router = useRouter();
   const [selectedUnit, setSelectedUnit] = useState<SellingUnit | null>(null);
   const [quantity, setQuantity] = useState(1);
 
@@ -113,6 +115,11 @@ export default function ProductInfoAction({
       sku: selectedUnit?.sku || product.sku,
       quantity: quantity,
     });
+  };
+
+  const handleBuyNow = () => {
+    handleAddToCart();
+    router.push("/checkout");
   };
 
   if (isOutOfStock) {
@@ -214,8 +221,8 @@ export default function ProductInfoAction({
 
       {/* Price Display */}
       {isFlashSaleActive ? (
-        <div className="mb-6 bg-gradient-to-br from-red-600 to-orange-500 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
-          <div className="absolute top-[-10px] right-[-10px] opacity-20 text-7xl pointer-events-none select-none">
+        <div className="mb-6 bg-linear-to-br from-red-600 to-orange-500 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+          <div className="absolute -top-2.5 -right-2.5 opacity-20 text-7xl pointer-events-none select-none">
             ⚡
           </div>
           <div className="flex items-center gap-2 mb-2">
@@ -290,7 +297,7 @@ export default function ProductInfoAction({
             Thêm vào giỏ
           </button>
           <button
-            onClick={handleAddToCart}
+            onClick={handleBuyNow}
             className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-full hover:bg-blue-700 shadow-xl shadow-blue-200 transition active:scale-95"
           >
             Chọn mua

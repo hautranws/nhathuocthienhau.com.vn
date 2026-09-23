@@ -21,7 +21,7 @@ export default function SuggestedProductsCart() {
   if (products.length === 0) return null;
 
   const getThumbnail = (img: any) => {
-    if (!img) return "https://via.placeholder.com/150";
+    if (!img) return "/product-placeholder.svg";
     try {
       if (img.startsWith("[")) {
         const parsed = JSON.parse(img);

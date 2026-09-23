@@ -77,9 +77,9 @@ export default function InventoryPage() {
 
   // Hàm xử lý ảnh an toàn - GIỮ NGUYÊN
   const getProductImage = (imgData: any) => {
-    if (!imgData) return "https://via.placeholder.com/150";
+    if (!imgData) return "/product-placeholder.svg";
     if (Array.isArray(imgData)) {
-      return imgData[0] || "https://via.placeholder.com/150";
+      return imgData[0] || "/product-placeholder.svg";
     }
     if (typeof imgData === "string") {
       if (imgData.startsWith("[")) {
@@ -87,12 +87,12 @@ export default function InventoryPage() {
           const parsed = JSON.parse(imgData);
           return Array.isArray(parsed) ? parsed[0] : imgData;
         } catch (e) {
-          return "https://via.placeholder.com/150";
+          return "/product-placeholder.svg";
         }
       }
       return imgData;
     }
-    return "https://via.placeholder.com/150";
+    return "/product-placeholder.svg";
   };
 
   // Lọc sản phẩm theo tên - GIỮ NGUYÊN (Tìm trong trang hiện tại)

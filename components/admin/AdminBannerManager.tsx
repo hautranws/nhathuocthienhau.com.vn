@@ -63,13 +63,39 @@ export default function AdminBannerManager() {
       const finalUrl = publicUrlData.publicUrl;
 
       // 4. Lưu link vào Database
-      const { error: dbError } = await supabase
+      let usedPlacementFallback = false;
+      let { error: dbError } = await supabase
         .from("banners_thienhau")
         .insert([{ image_url: finalUrl, active: true, placement }]);
 
+      // Không lưu banner mobile thành desktop nếu database chưa có placement.
+      if (dbError && placement === "mobile" && /placement|schema cache|column/i.test(dbError.message)) {
+        throw new Error(
+          "Database chưa có cột placement. Hãy chạy SQL_ADMIN_SETUP.sql trước khi up banner điện thoại.",
+        );
+      }
+
+      // Banner desktop cũ vẫn có thể lưu khi chưa chạy migration.
+      if (dbError && placement === "desktop" && /placement|schema cache|column/i.test(dbError.message)) {
+        const fallbackInsert = await supabase
+          .from("banners_thienhau")
+          .insert([{ image_url: finalUrl, active: true }]);
+        dbError = fallbackInsert.error;
+
+        if (!dbError) {
+          usedPlacementFallback = true;
+        }
+      }
+
       if (dbError) throw dbError;
 
-      alert("✅ Upload banner thành công!");
+      if (placement === "mobile" && !dbError && !usedPlacementFallback) {
+        alert("✅ Upload banner điện thoại thành công!");
+      } else if (placement === "desktop" && !dbError && !usedPlacementFallback) {
+        alert("✅ Upload banner thành công!");
+      } else if (usedPlacementFallback) {
+        alert("✅ Đã upload banner máy tính. Hãy chạy SQL_ADMIN_SETUP.sql để bật banner điện thoại.");
+      }
       fetchBanners(); // Load lại danh sách
     } catch (error: any) {
       console.error(error);
@@ -242,11 +268,11 @@ export default function AdminBannerManager() {
                 key={banner.id}
                 className="flex items-center gap-4 p-3 border rounded-lg hover:bg-gray-50 transition"
               >
-                <div className="w-32 h-16 bg-gray-200 rounded overflow-hidden shrink-0 relative">
+                <div className="w-20 h-28 bg-gray-200 rounded overflow-hidden shrink-0 relative">
                   <img
                     src={banner.image_url}
                     alt="Banner"
-                    className={`w-full h-full object-cover ${
+                    className={`w-full h-full object-contain ${
                       !banner.active ? "grayscale opacity-50" : ""
                     }`}
                   />

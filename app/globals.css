@@ -60,3 +60,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.checkout-field {
+  color: #1f2937 !important;
+  font-weight: 600;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #1f2937;
+}
+
+.checkout-field::placeholder {
+  color: #374151 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #374151;
+}
+
+.checkout-field:disabled {
+  color: #4b5563 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #4b5563;
+}

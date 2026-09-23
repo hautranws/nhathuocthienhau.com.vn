@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 const bannerShownKey = "thien-hau-purchase-channel-banner-shown-v2";
 const zaloOaUrl = "https://zalo.me/3788256104237241918";
 
 export default function PurchaseChannelBanner() {
-  const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
+  const closeBanner = () => setIsVisible(false);
+
+  const chooseWebsite = () => {
+    closeBanner();
+  };
 
   useEffect(() => {
     let showTimer: number | undefined;
@@ -27,22 +30,35 @@ export default function PurchaseChannelBanner() {
     };
   }, []);
 
-  const closeBanner = () => setIsVisible(false);
-  const chooseWebsite = () => {
-    closeBanner();
-    router.push("/login");
-  };
+  useEffect(() => {
+    if (!isVisible) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeBanner();
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isVisible]);
 
   if (!isVisible) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-10000 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="purchase-channel-title"
     >
       <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <button
+          type="button"
+          onClick={closeBanner}
+          aria-label="Đóng lựa chọn kênh mua hàng"
+          className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-2xl leading-none text-white transition hover:bg-white/25"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
         <div className="bg-blue-700 px-6 pb-7 pt-8 text-center text-white">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-100">
             Nhà thuốc Thiên Hậu

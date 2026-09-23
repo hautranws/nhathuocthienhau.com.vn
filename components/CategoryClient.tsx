@@ -13,6 +13,7 @@ export default function CategoryClient({
   const safeProducts = Array.isArray(initialProducts) ? initialProducts : [];
   const [products, setProducts] = useState(safeProducts);
   const [priceFilter, setPriceFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("default");
 
   useEffect(() => {
     let result = [...safeProducts];
@@ -26,8 +27,18 @@ export default function CategoryClient({
       result = result.filter((p) => p.price > 500000);
     }
 
+    if (sortOrder === "name-asc") {
+      result.sort((firstProduct, secondProduct) =>
+        String(firstProduct.title || "").localeCompare(
+          String(secondProduct.title || ""),
+          "vi",
+          { sensitivity: "base" },
+        ),
+      );
+    }
+
     setProducts(result);
-  }, [priceFilter, safeProducts]);
+  }, [priceFilter, safeProducts, sortOrder]);
 
   return (
     <div className="flex flex-col md:flex-row gap-6">
@@ -97,13 +108,25 @@ export default function CategoryClient({
 
       {/* --- CỘT PHẢI: DANH SÁCH SẢN PHẨM --- */}
       <div className="w-full md:w-3/4">
-        <div className="flex justify-between items-center mb-4 border-b pb-2">
+        <div className="flex flex-col gap-3 border-b pb-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold text-gray-800">
             {decodeURIComponent(categoryName)}
             <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
               {products.length} sản phẩm
             </span>
           </h1>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="whitespace-nowrap">Sắp xếp:</span>
+            <select
+              value={sortOrder}
+              onChange={(event) => setSortOrder(event.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              aria-label="Sắp xếp sản phẩm"
+            >
+              <option value="default">Mặc định</option>
+              <option value="name-asc">Tên A → Z</option>
+            </select>
+          </label>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
