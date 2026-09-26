@@ -10,18 +10,18 @@ export default function OrdersPage() {
   const [orderItems, setOrderItems] = useState<any[]>([]);
 
   useEffect(() => {
+    const fetchOrders = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (data) setOrders(data);
+      setLoading(false);
+    };
+
     fetchOrders();
   }, []);
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (data) setOrders(data);
-    setLoading(false);
-  };
 
   const fetchOrderItems = async (orderId: number) => {
     if (expandedOrderId === orderId) {
@@ -93,7 +93,7 @@ export default function OrdersPage() {
                   <div className="text-right">
                     <p className="text-xs text-gray-400">Tổng tiền</p>
                     <p className="text-red-600 font-bold text-lg">
-                      {Number(order.total_price).toLocaleString("vi-VN")}đ
+                      {Number(order.final_price ?? order.total_price).toLocaleString("vi-VN")}đ
                     </p>
                   </div>
                   

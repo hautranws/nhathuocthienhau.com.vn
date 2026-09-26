@@ -117,14 +117,19 @@ export default function AdminChatPage() {
     }
   };
 
-  // Tìm kiếm sản phẩm để gửi
-  const handleSearchProduct = async () => {
-      const { data } = await supabase.from('products').select('id, title, price, img').ilike('title', `%${searchTerm}%`).limit(10);
-      if(data) setProducts(data);
-  };
-
   useEffect(() => {
-      if(isProductModalOpen) handleSearchProduct();
+      if (!isProductModalOpen) return;
+
+      const debounceTimer = window.setTimeout(async () => {
+        const { data } = await supabase
+          .from("products")
+          .select("id, title, price, img")
+          .ilike("title", `%${searchTerm}%`)
+          .limit(10);
+        if (data) setProducts(data);
+      }, 350);
+
+      return () => window.clearTimeout(debounceTimer);
   }, [isProductModalOpen, searchTerm]);
 
 

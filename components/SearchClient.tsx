@@ -251,13 +251,25 @@ const SearchClient: React.FC<SearchClientProps> = ({
   }, [query, filters]);
 
   useEffect(() => {
+    const hasActiveFilters =
+      filters.category !== "Tất cả" ||
+      Boolean(filters.minPrice) ||
+      Boolean(filters.maxPrice) ||
+      Boolean(filters.usageType);
+
+    if (query.trim() && query.trim() === initialQuery && !hasActiveFilters) {
+      setProducts(initialProducts);
+      setLoading(false);
+      return;
+    }
+
     // Debounce: chỉ fetch khi filter thay đổi
     const timer = setTimeout(() => {
       fetchProducts();
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [fetchProducts]);
+  }, [fetchProducts, filters, initialProducts, initialQuery, query]);
 
   return (
     <div className="container mx-auto px-4 py-8">

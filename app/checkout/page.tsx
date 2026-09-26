@@ -259,13 +259,23 @@ export default function CheckoutPage() {
         }
     };
 
-    checkExpressShipping();
-    return () => { isMounted = false; };
+    const debounceTimer = window.setTimeout(() => {
+        checkExpressShipping();
+    }, 600);
+
+    return () => {
+        isMounted = false;
+        window.clearTimeout(debounceTimer);
+    };
   }, [deliveryMethod, selectedAddressId, addressData.city, addressData.district, addressData.ward, addressData.specific, savedAddresses, pharmacyLocations]);
 
-  useEffect(() => {
-    if (cart.length > 0 && selectedItems.length === 0) setSelectedItems(cart.map((item) => item.id));
-    
+    useEffect(() => {
+        if (cart.length > 0 && selectedItems.length === 0) {
+            setSelectedItems(cart.map((item) => item.id));
+        }
+    }, [cart, selectedItems.length]);
+
+    useEffect(() => {
     const fetchData = async () => {
         const user = await getSafeSupabaseUser();
         setUser(user);
@@ -287,7 +297,7 @@ export default function CheckoutPage() {
         if (data) setAvailableCoupons(data.filter(c => c.usage_limit === 0 || c.used_count < c.usage_limit));
     };
     fetchData(); fetchCoupons();
-  }, [cart]);
+    }, []);
 
   // --- TÍNH NGÀY GIAO HÀNG CHUẨN SHOPEE ---
   useEffect(() => {

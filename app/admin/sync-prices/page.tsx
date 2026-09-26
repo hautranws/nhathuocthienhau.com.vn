@@ -613,7 +613,9 @@ export default function SyncPricesPage() {
   // --- 3. HÀM ĐỒNG BỘ DỮ LIỆU LÊN SUPABASE ---
   const handleSyncPrices = async () => {
     const rowsToSync = previewData.filter(
-      (r) => r.productId && (r.status === "changed" || r.status === "unchanged"),
+      (row): row is PreviewRow & { productId: number } =>
+        Boolean(row.productId) &&
+        (row.status === "changed" || row.status === "unchanged"),
     );
 
     if (rowsToSync.length === 0) {
@@ -632,6 +634,7 @@ export default function SyncPricesPage() {
     setSyncing(true);
     let successCount = 0;
     let failCount = 0;
+    const failedProductIds = new Set<number>();
 
     try {
       // Giảm BATCH_SIZE xuống 10 để tránh cạn kiệt Connection Pool của Supabase
@@ -642,14 +645,18 @@ export default function SyncPricesPage() {
         // Dùng Promise.all để update song song trong cùng 1 lô (batch)
         await Promise.all(
           batch.map(async (row) => {
-            // Query update: WHERE sku = row.sku
-            const { error } = await supabase
+            const { data, error } = await supabase
               .from("products")
               .update({ price: row.newPrice, is_out_of_stock: false })
-              .eq("sku", row.sku);
+              .eq("id", row.productId)
+              .select("id");
 
-            if (error) {
-              console.error(`Lỗi update SKU ${row.sku}:`, error);
+            if (error || !data?.length) {
+              console.error(
+                `Lỗi update SKU ${row.sku}:`,
+                error || new Error("Không tìm thấy sản phẩm để cập nhật."),
+              );
+              failedProductIds.add(row.productId);
               failCount++;
             } else {
               successCount++;
@@ -664,7 +671,17 @@ export default function SyncPricesPage() {
       alert(
         `✅ Đồng bộ hoàn tất!\n- Thành công: ${successCount}\n- Thất bại: ${failCount}`,
       );
-      setPreviewData([]); // Clear bảng sau khi update xong
+      if (failCount === 0) {
+        setPreviewData([]);
+      } else {
+        setPreviewData((current) =>
+          current.filter(
+            (row) =>
+              row.status === "not_found" ||
+              (row.productId !== undefined && failedProductIds.has(row.productId)),
+          ),
+        );
+      }
     } catch (error: unknown) {
       alert("Lỗi nghiêm trọng khi đồng bộ: " + (error instanceof Error ? error.message : "Lỗi không xác định"));
     } finally {

@@ -21,7 +21,7 @@ async function getProducts() {
     .order("id", { ascending: false });
 
   if (error) {
-    console.error("❌ Lỗi lấy hàng chọn lọc:", error.message);
+    return { data: [], error };
   }
 
   console.log("✅ Tìm thấy", data?.length || 0, "sản phẩm chọn lọc");
